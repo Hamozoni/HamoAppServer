@@ -7,6 +7,9 @@ class OTPServices {
         return crypto.randomInt(Math.pow(10, length - 1), Math.pow(10, length)).toString();
     };
 
+    static generateOTPExpiration = (expirationMinutes = 1) : Date => {
+        return new Date(Date.now() + expirationMinutes * 60 * 1000);
+    };
 }
 
 export default OTPServices;
