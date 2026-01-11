@@ -1,23 +1,15 @@
 // src/controllers/auth.controller.ts
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import User from '../models/user.model.js';
 import otpService from '../services/otp.services.js';
 import type { IAuthRequest } from '../types/index.js';
 
 class AuthController {
-  
-  /**
-   * Step 1: Send OTP
-   * POST /api/auth/send-otp
-   * Body: { phoneNumber: string, channel?: 'sms' | 'call' }
-   */
-  async sendOTP(req: Request, res: Response): Promise<void> {
+
+  async sendOTP(req: Request, res: Response,next:NextFunction): Promise<void> {
     try {
       const { phoneNumber, channel = 'sms' } = req.body;
-
-      console.log(`📱 Sending OTP to ${phoneNumber} via ${channel}`);
-
       const result = await otpService.sendOTP(phoneNumber, channel);
 
       if (!result.success) {
@@ -29,22 +21,16 @@ class AuthController {
         success: true,
         message: `Verification code sent via ${channel}`,
         expiresIn: result.expiresIn,
-        sid: result.sid // Optional: can be used for tracking
       });
+      next()
     } catch (error: any) {
-      console.error('Send OTP error:', error);
       res.status(500).json({ error: 'Failed to send verification code' });
     }
-  }
+  };
 
-  /**
-   * Step 2: Verify OTP and Sign In/Register
-   * POST /api/auth/verify-otp
-   * Body: { phoneNumber, code, deviceInfo, displayName? }
-   */
   async verifyOTP(req: Request, res: Response): Promise<void> {
     try {
-      const { phoneNumber, code, deviceInfo, displayName } = req.body;
+      const { phoneNumber, code, deviceInfo } = req.body;
 
       console.log(`🔐 Verifying OTP for ${phoneNumber}`);
 
@@ -55,26 +41,20 @@ class AuthController {
         res.status(400).json({ error: verification.error });
         return;
       }
-
-      console.log(`✅ OTP verified for ${phoneNumber}`);
-
       // Find or create user
       let user = await User.findOne({ phoneNumber });
       let isNewUser = false;
 
       if (!user) {
-        console.log(`👤 Creating new user: ${phoneNumber}`);
         
         // Register new user
         user = await User.create({
           phoneNumber,
-          displayName: displayName || undefined,
           isPhoneVerified: true
         });
         isNewUser = true;
       } else {
-        console.log(`👤 User found: ${phoneNumber}`);
-        
+
         // Update verification status
         if (!user.isPhoneVerified) {
           user.isPhoneVerified = true;
@@ -86,19 +66,19 @@ class AuthController {
       const deviceId = uuidv4();
 
       // Add/update device
-      const existingDeviceIndex = user.devices.findIndex(
-        d => d.platform === deviceInfo.platform && d.deviceName === deviceInfo.deviceName
+      const existingDeviceIndex : number = user.devices.findIndex(
+        d => d.platform === deviceInfo.platform && d.deviceName === deviceInfo.deviceName && d.deviceId === deviceInfo.deviceId
       );
 
       if (existingDeviceIndex >= 0) {
-        user.devices[existingDeviceIndex].deviceId = deviceId;
-        user.devices[existingDeviceIndex].lastActive = new Date();
+        const existingDevice = user.devices[existingDeviceIndex];
+        if (existingDevice) {
+          existingDevice.lastActive = new Date();
+        }
       } else {
         user.devices.push({
-          deviceId,
-          platform: deviceInfo.platform,
-          deviceName: deviceInfo.deviceName,
-          lastActive: new Date()
+          ...deviceInfo,
+          deviceId: deviceInfo?.deviceId || deviceId,
         });
       }
 
@@ -110,8 +90,6 @@ class AuthController {
       user.cleanExpiredTokens();
 
       await user.save();
-
-      console.log(`🎉 ${isNewUser ? 'Registration' : 'Login'} successful for ${phoneNumber}`);
 
       res.status(isNewUser ? 201 : 200).json({
         success: true,
@@ -133,13 +111,8 @@ class AuthController {
       console.error('Verify OTP error:', error);
       res.status(500).json({ error: 'Verification failed' });
     }
-  }
+  };
 
-  /**
-   * Resend OTP
-   * POST /api/auth/resend-otp
-   * Body: { phoneNumber, channel?: 'sms' | 'call' }
-   */
   async resendOTP(req: Request, res: Response): Promise<void> {
     try {
       const { phoneNumber, channel = 'sms' } = req.body;
@@ -162,13 +135,8 @@ class AuthController {
       console.error('Resend OTP error:', error);
       res.status(500).json({ error: 'Failed to resend verification code' });
     }
-  }
+  };
 
-  /**
-   * Refresh access token
-   * POST /api/auth/refresh-token
-   * Body: { refreshToken, deviceId }
-   */
   async refreshToken(req: Request, res: Response): Promise<void> {
     try {
       const { refreshToken, deviceId } = req.body;
@@ -231,11 +199,6 @@ class AuthController {
     }
   }
 
-  /**
-   * Logout from current device
-   * POST /api/auth/logout
-   * Body: { deviceId?, refreshToken? }
-   */
   async logout(req: IAuthRequest, res: Response): Promise<void> {
     try {
       const { deviceId, refreshToken } = req.body;
@@ -264,12 +227,8 @@ class AuthController {
       console.error('Logout error:', error);
       res.status(500).json({ error: 'Logout failed' });
     }
-  }
+  };
 
-  /**
-   * Logout from all devices
-   * POST /api/auth/logout-all
-   */
   async logoutAll(req: IAuthRequest, res: Response): Promise<void> {
     try {
       const user = req.user!;
@@ -284,12 +243,8 @@ class AuthController {
       console.error('Logout all error:', error);
       res.status(500).json({ error: 'Logout failed' });
     }
-  }
+  };
 
-  /**
-   * Get current user
-   * GET /api/auth/me
-   */
   async getMe(req: IAuthRequest, res: Response): Promise<void> {
     try {
       const user = req.user!;
@@ -313,13 +268,7 @@ class AuthController {
     } catch (error: any) {
       res.status(500).json({ error: 'Failed to get user' });
     }
-  }
-
-  /**
-   * Update profile
-   * PATCH /api/auth/profile
-   * Body: { displayName?, about?, profilePicture? }
-   */
+  };
   async updateProfile(req: IAuthRequest, res: Response): Promise<void> {
     try {
       const user = req.user!;
