@@ -55,6 +55,7 @@ const authMiddleware = async (
 
     try {
         const authHeader : string | undefined = req.headers.authorization;
+
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({ message: 'unauthorized' })
         };
@@ -88,6 +89,7 @@ const authMiddleware = async (
                 phoneNumber: decodedToken.phone_number || '',
                 lastLoginAt: new Date()
             });
+            
             user = newUser as unknown as UserDocument;
         } else {
             user.lastLoginAt = new Date();
