@@ -8,7 +8,7 @@ import {
   validateDisplayName,
   handleValidationErrors
 } from '../middleware/validation.middleware.js';
-import { otpLimiter, loginLimiter } from '../middleware/ratelimter.middleware.js';
+import { otpLimiter, loginLimiter } from '../middleware/rateLimter.middleware.js';
 import { body } from 'express-validator';
 
 const router = Router();
@@ -87,7 +87,9 @@ router.patch(
   authController.updateProfile
 );
 
+
 router.post('/logout', authMiddleware, authController.logout);
+
 router.post('/logout-all', authMiddleware, authController.logoutAll);
 
 export default router;

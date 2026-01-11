@@ -1,4 +1,3 @@
-
 // import { Router } from "express";
 // import { get_message_controller, post_message_controller, put_message_status_controller } from "../controllers/message.controller.js";
 // import upload_middleware from "../middleware/upload.middleware.js";
@@ -10,5 +9,12 @@
 // .get(get_message_controller)
 // .put(put_message_status_controller)
 
-
 // export default router;
+
+import { Router } from "express";
+
+const router = Router();
+
+// TODO: Implement message routes
+
+export default router;

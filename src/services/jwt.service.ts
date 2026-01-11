@@ -9,7 +9,7 @@ class JWTService {
     return jwt.sign(
       { ...payload, type: 'access' },
       process.env.JWT_ACCESS_SECRET!,
-      { expiresIn: '15m' }
+      { expiresIn: '30d' }
     );
   }
 
@@ -32,7 +32,7 @@ class JWTService {
       }
       throw new Error('Invalid access token');
     }
-  }
+  };
 
   // Verify refresh token
   verifyRefreshToken(token: string): IJWTPayload {

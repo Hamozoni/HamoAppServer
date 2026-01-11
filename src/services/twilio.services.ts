@@ -1,11 +1,7 @@
 // src/services/twilio.service.ts
 import twilio from 'twilio';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 class TwilioService {
-
   private client: twilio.Twilio;
   private verifyServiceSid: string;
 
@@ -17,50 +13,153 @@ class TwilioService {
     this.verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID!;
   }
 
-  // Method 1: Using Twilio Verify API (Recommended - easier)
-  async sendVerificationCode(phoneNumber: string): Promise<{ success: boolean; sid?: string; error?: string }> {
+  /**
+   * Send verification code via Twilio Verify
+   * Twilio handles OTP generation, storage, and expiry automatically
+   */
+  async sendVerificationCode(
+    phoneNumber: string,
+    channel: 'sms' | 'call' = 'sms'
+  ): Promise<{ 
+    success: boolean; 
+    sid?: string; 
+    error?: string;
+    status?: string;
+  }> {
     try {
       const verification = await this.client.verify.v2
         .services(this.verifyServiceSid)
-        .verifications.create({
+        .verifications
+        .create({
           to: phoneNumber,
-          channel: 'sms'
+          channel: channel, // 'sms' or 'call'
+          locale: 'en' // Can be 'ar' for Arabic
         });
 
-      console.log('OTP sent via Twilio Verify:', verification.sid);
+      console.log('✅ Verification sent:', {
+        sid: verification.sid,
+        to: phoneNumber,
+        channel: verification.channel,
+        status: verification.status
+      });
 
       return {
         success: true,
-        sid: verification.sid
+        sid: verification.sid,
+        status: verification.status
       };
     } catch (error: any) {
-      console.error('Twilio Verify error:', error);
+      console.error('❌ Twilio Verify send error:', error);
+      
+      // Handle specific Twilio errors
+      if (error.code === 60200) {
+        return {
+          success: false,
+          error: 'Invalid phone number format'
+        };
+      } else if (error.code === 60203) {
+        return {
+          success: false,
+          error: 'Maximum send attempts reached. Please try again later.'
+        };
+      } else if (error.code === 60212) {
+        return {
+          success: false,
+          error: 'Too many requests. Please wait before trying again.'
+        };
+      }
+      
       return {
         success: false,
-        error: error.message
+        error: error.message || 'Failed to send verification code'
       };
     }
   }
 
-  async verifyCode(phoneNumber: string, code: string): Promise<{ success: boolean; error?: string }> {
+  /**
+   * Verify the code entered by user
+   */
+  async verifyCode(
+    phoneNumber: string,
+    code: string
+  ): Promise<{ 
+    success: boolean; 
+    error?: string;
+    status?: string;
+  }> {
     try {
       const verificationCheck = await this.client.verify.v2
         .services(this.verifyServiceSid)
-        .verificationChecks.create({
+        .verificationChecks
+        .create({
           to: phoneNumber,
           code: code
         });
 
+      console.log('✅ Verification check:', {
+        to: phoneNumber,
+        status: verificationCheck.status,
+        valid: verificationCheck.valid
+      });
+
       if (verificationCheck.status === 'approved') {
-        return { success: true };
+        return { 
+          success: true,
+          status: 'approved'
+        };
       } else {
         return { 
           success: false, 
-          error: 'Invalid verification code' 
+          error: 'Invalid or expired verification code',
+          status: verificationCheck.status
         };
       }
     } catch (error: any) {
-      console.error('Twilio verification error:', error);
+      console.error('❌ Twilio Verify check error:', error);
+      
+      // Handle specific errors
+      if (error.code === 60200) {
+        return {
+          success: false,
+          error: 'Invalid phone number'
+        };
+      } else if (error.code === 60202) {
+        return {
+          success: false,
+          error: 'Maximum check attempts reached'
+        };
+      } else if (error.code === 60223) {
+        return {
+          success: false,
+          error: 'No verification found or code expired'
+        };
+      }
+      
+      return {
+        success: false,
+        error: error.message || 'Verification failed'
+      };
+    }
+  }
+
+  /**
+   * Cancel a pending verification
+   */
+  async cancelVerification(
+    phoneNumber: string,
+    sid: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      await this.client.verify.v2
+        .services(this.verifyServiceSid)
+        .verifications(sid)
+        .update({ status: 'canceled' });
+
+      console.log('✅ Verification cancelled:', sid);
+      
+      return { success: true };
+    } catch (error: any) {
+      console.error('❌ Cancel verification error:', error);
       return {
         success: false,
         error: error.message
@@ -68,23 +167,28 @@ class TwilioService {
     }
   }
 
-  // Method 2: Manual OTP sending (more control)
-  async sendOTP(phoneNumber: string, otp: string): Promise<{ success: boolean; sid?: string; error?: string }> {
+  /**
+   * Check verification status
+   */
+  async checkVerificationStatus(
+    sid: string
+  ): Promise<{ 
+    success: boolean; 
+    status?: string; 
+    error?: string;
+  }> {
     try {
-      const message = await this.client.messages.create({
-        body: `Your verification code is: ${otp}. Valid for ${process.env.OTP_EXPIRY_MINUTES} minutes. Never share this code.`,
-        from: process.env.TWILIO_PHONE_NUMBER!,
-        to: phoneNumber
-      });
-
-      console.log('OTP sent via Twilio SMS:', message.sid);
+      const verification = await this.client.verify.v2
+        .services(this.verifyServiceSid)
+        .verifications(sid)
+        .fetch();
 
       return {
         success: true,
-        sid: message.sid
+        status: verification.status
       };
     } catch (error: any) {
-      console.error('Twilio SMS error:', error);
+      console.error('❌ Check status error:', error);
       return {
         success: false,
         error: error.message

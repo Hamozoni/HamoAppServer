@@ -4,6 +4,6 @@ import { getCalls } from "../controllers/call.controller.js";
 const router = Router();
 
 router.route('/')
-    .get(getCalls)
+    .get(getCalls);
 
-export default router
+export default router;

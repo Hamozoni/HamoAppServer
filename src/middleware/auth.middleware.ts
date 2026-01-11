@@ -1,6 +1,6 @@
 // src/middleware/auth.middleware.ts
 import type { Request, Response, NextFunction } from 'express';
-import jwtService from '../services/jwt.services.js';
+import jwtService from '../services/jwt.service.js';
 import User from '../models/user.model.js';
 import type { IAuthRequest } from '../types/index.js';
 

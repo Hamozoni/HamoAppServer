@@ -18,7 +18,7 @@ const RefreshTokenSchema = new Schema<IRefreshToken>({
 
 const DeviceSchema = new Schema<IDevice>({
   deviceId: { type: String, required: true },
-  platform: { type: String, enum: ['ios', 'android', 'web'], required: true },
+  platform: { type: String, required: true },
   deviceName: { type: String, required: true },
   lastActive: { type: Date, default: Date.now },
   publicKey: String
@@ -29,7 +29,6 @@ const UserSchema = new Schema<IUser>({
     type: String,
     required: true,
     unique: true,
-    index: true,
     trim: true
   },
   displayName: {
@@ -56,7 +55,7 @@ const UserSchema = new Schema<IUser>({
 });
 
 // Indexes for performance
-UserSchema.index({ phoneNumber: 1 });
+// phoneNumber index is automatically created by unique: true
 UserSchema.index({ 'refreshTokens.deviceId': 1 });
 
 // Generate access token (short-lived)
@@ -68,7 +67,7 @@ UserSchema.methods.generateAccessToken = function(): string {
       type: 'access'
     },
     process.env.JWT_ACCESS_SECRET!,
-    { expiresIn: '15m' }
+    { expiresIn: '30m' }
   );
 };
 
@@ -107,24 +106,3 @@ UserSchema.methods.cleanExpiredTokens = function(): void {
 };
 
 export default mongoose.model<IUser>('User', UserSchema);
-
-
-// import mongoose from 'mongoose';
-
-// const USER_SCHEMA = new mongoose.Schema({
-//     displayName: {type: String,require: true},
-//     phoneNumber: {type: String,require: true,unique: true},
-//     email: {type: String,require: true,unique: true},
-//     bio: {type: String,require: false,default:'Hey there! I am using WhatsApp.'},
-//     emailVerified:{type: Boolean, default: false },
-//     photoURL: {type: String,require: true,default: './placeholder_avatar.jpg'},
-//     photoPoblicId: {type: String,require: false},
-//     lastLoginAt: {type: Date,require: true,default: Date.now()},
-//     contacts: [{type: mongoose.Schema.Types.ObjectId,ref: 'User'}],
-//     blockedContacts: [{type: mongoose.Schema.Types.ObjectId,ref: "User"}],
-//     devices: [{type: String,require: true}],
-// },{timestamps: true});
-
-//  const User = mongoose.model('User',USER_SCHEMA);
-
-//  export default User;
