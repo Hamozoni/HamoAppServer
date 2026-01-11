@@ -1,7 +1,7 @@
 // src/models/User.ts
 import mongoose, { Schema } from 'mongoose';
 import jwt from 'jsonwebtoken';
-import type { IUser, IRefreshToken, IDevice } from "../types/index.ts";
+import type { IUser, IRefreshToken, IDevice } from "../types/index.js";
 
 const RefreshTokenSchema = new Schema<IRefreshToken>({
   token: { type: String, required: true },

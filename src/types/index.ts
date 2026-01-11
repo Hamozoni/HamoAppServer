@@ -1,5 +1,6 @@
 // src/types/index.ts
-import { Document } from 'mongoose';
+import type { Document } from 'mongoose';
+import type { Request } from 'express';
 
 export interface IUser extends Document {
   _id: string;

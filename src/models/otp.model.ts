@@ -1,6 +1,6 @@
 // src/models/OTP.ts
 import mongoose, { Schema } from 'mongoose';
-import type { IOTP } from "../types/index.ts";
+import type { IOTP } from "../types/index.js";
 
 const OTPSchema = new Schema<IOTP>({
   phoneNumber: {
