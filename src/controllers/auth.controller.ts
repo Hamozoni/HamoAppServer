@@ -3,52 +3,68 @@ import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import User from '../models/user.model.js';
 import otpService from '../services/otp.services.js';
-import jwtService from '../services/jwt.services.js';
-import type { IAuthRequest, IDeviceInfo } from '../types/index.js';
+import type { IAuthRequest } from '../types/index.js';
 
 class AuthController {
   
-  // Step 1: Send OTP
+  /**
+   * Step 1: Send OTP
+   * POST /api/auth/send-otp
+   * Body: { phoneNumber: string, channel?: 'sms' | 'call' }
+   */
   async sendOTP(req: Request, res: Response): Promise<void> {
     try {
-      const { phoneNumber } = req.body;
+      const { phoneNumber, channel = 'sms' } = req.body;
 
-      const result = await otpService.sendOTP(phoneNumber);
+      console.log(`📱 Sending OTP to ${phoneNumber} via ${channel}`);
+
+      const result = await otpService.sendOTP(phoneNumber, channel);
 
       if (!result.success) {
-        res.status(500).json({ error: result.error });
+        res.status(400).json({ error: result.error });
         return;
       }
 
       res.json({
         success: true,
-        message: 'OTP sent successfully',
-        expiresIn: result.expiresIn
+        message: `Verification code sent via ${channel}`,
+        expiresIn: result.expiresIn,
+        sid: result.sid // Optional: can be used for tracking
       });
     } catch (error: any) {
       console.error('Send OTP error:', error);
-      res.status(500).json({ error: 'Failed to send OTP' });
+      res.status(500).json({ error: 'Failed to send verification code' });
     }
   }
 
-  // Step 2: Verify OTP and Sign In/Register
+  /**
+   * Step 2: Verify OTP and Sign In/Register
+   * POST /api/auth/verify-otp
+   * Body: { phoneNumber, code, deviceInfo, displayName? }
+   */
   async verifyOTP(req: Request, res: Response): Promise<void> {
     try {
-      const { phoneNumber, otp, deviceInfo, displayName } = req.body;
+      const { phoneNumber, code, deviceInfo, displayName } = req.body;
 
-      // Verify OTP
-      const verification = await otpService.verifyOTP(phoneNumber, otp);
+      console.log(`🔐 Verifying OTP for ${phoneNumber}`);
+
+      // Verify OTP via Twilio
+      const verification = await otpService.verifyOTP(phoneNumber, code);
 
       if (!verification.success) {
         res.status(400).json({ error: verification.error });
         return;
       }
 
+      console.log(`✅ OTP verified for ${phoneNumber}`);
+
       // Find or create user
       let user = await User.findOne({ phoneNumber });
       let isNewUser = false;
 
       if (!user) {
+        console.log(`👤 Creating new user: ${phoneNumber}`);
+        
         // Register new user
         user = await User.create({
           phoneNumber,
@@ -57,6 +73,8 @@ class AuthController {
         });
         isNewUser = true;
       } else {
+        console.log(`👤 User found: ${phoneNumber}`);
+        
         // Update verification status
         if (!user.isPhoneVerified) {
           user.isPhoneVerified = true;
@@ -69,15 +87,12 @@ class AuthController {
 
       // Add/update device
       const existingDeviceIndex = user.devices.findIndex(
-        (d: { platform: string; deviceName: string }) => d.platform === deviceInfo.platform && d.deviceName === deviceInfo.deviceName
+        d => d.platform === deviceInfo.platform && d.deviceName === deviceInfo.deviceName
       );
 
       if (existingDeviceIndex >= 0) {
-        const existingDevice = user.devices[existingDeviceIndex];
-        if (existingDevice) {
-          existingDevice.deviceId = deviceId;
-          existingDevice.lastActive = new Date();
-        }
+        user.devices[existingDeviceIndex].deviceId = deviceId;
+        user.devices[existingDeviceIndex].lastActive = new Date();
       } else {
         user.devices.push({
           deviceId,
@@ -95,6 +110,8 @@ class AuthController {
       user.cleanExpiredTokens();
 
       await user.save();
+
+      console.log(`🎉 ${isNewUser ? 'Registration' : 'Login'} successful for ${phoneNumber}`);
 
       res.status(isNewUser ? 201 : 200).json({
         success: true,
@@ -118,12 +135,18 @@ class AuthController {
     }
   }
 
-  // Resend OTP
+  /**
+   * Resend OTP
+   * POST /api/auth/resend-otp
+   * Body: { phoneNumber, channel?: 'sms' | 'call' }
+   */
   async resendOTP(req: Request, res: Response): Promise<void> {
     try {
-      const { phoneNumber } = req.body;
+      const { phoneNumber, channel = 'sms' } = req.body;
 
-      const result = await otpService.resendOTP(phoneNumber);
+      console.log(`🔄 Resending OTP to ${phoneNumber}`);
+
+      const result = await otpService.resendOTP(phoneNumber, channel);
 
       if (!result.success) {
         res.status(400).json({ error: result.error });
@@ -132,19 +155,23 @@ class AuthController {
 
       res.json({
         success: true,
-        message: 'OTP resent successfully',
+        message: 'Verification code resent',
         expiresIn: result.expiresIn
       });
     } catch (error: any) {
       console.error('Resend OTP error:', error);
-      res.status(500).json({ error: 'Failed to resend OTP' });
+      res.status(500).json({ error: 'Failed to resend verification code' });
     }
   }
 
-  // Refresh access token
+  /**
+   * Refresh access token
+   * POST /api/auth/refresh-token
+   * Body: { refreshToken, deviceId }
+   */
   async refreshToken(req: Request, res: Response): Promise<void> {
     try {
-      const { refreshToken, deviceId } = req.body as { refreshToken?: string; deviceId?: string };
+      const { refreshToken, deviceId } = req.body;
 
       if (!refreshToken || !deviceId) {
         res.status(400).json({ error: 'Refresh token and device ID required' });
@@ -152,6 +179,7 @@ class AuthController {
       }
 
       // Verify refresh token
+      const jwtService = require('../services/jwt.service').default;
       const decoded = jwtService.verifyRefreshToken(refreshToken);
 
       // Find user
@@ -164,7 +192,7 @@ class AuthController {
 
       // Check if refresh token exists and is valid
       const storedToken = user.refreshTokens.find(
-        (rt: { token: string; deviceId: string }) => rt.token === refreshToken && rt.deviceId === deviceId
+        rt => rt.token === refreshToken && rt.deviceId === deviceId
       );
 
       if (!storedToken) {
@@ -180,9 +208,9 @@ class AuthController {
       // Generate new access token
       const accessToken = user.generateAccessToken();
 
-      // Optionally rotate refresh token (more secure)
+      // Rotate refresh token (security best practice)
       user.refreshTokens = user.refreshTokens.filter(
-        (rt: { token: string }) => rt.token !== refreshToken
+        rt => rt.token !== refreshToken
       );
 
       const newRefreshToken = user.generateRefreshToken(
@@ -203,10 +231,14 @@ class AuthController {
     }
   }
 
-  // Logout
+  /**
+   * Logout from current device
+   * POST /api/auth/logout
+   * Body: { deviceId?, refreshToken? }
+   */
   async logout(req: IAuthRequest, res: Response): Promise<void> {
     try {
-      const { deviceId , refreshToken } = req.body;
+      const { deviceId, refreshToken } = req.body;
       const user = req.user!;
 
       // Remove refresh token
@@ -234,7 +266,10 @@ class AuthController {
     }
   }
 
-  // Logout from all devices
+  /**
+   * Logout from all devices
+   * POST /api/auth/logout-all
+   */
   async logoutAll(req: IAuthRequest, res: Response): Promise<void> {
     try {
       const user = req.user!;
@@ -251,7 +286,10 @@ class AuthController {
     }
   }
 
-  // Get current user
+  /**
+   * Get current user
+   * GET /api/auth/me
+   */
   async getMe(req: IAuthRequest, res: Response): Promise<void> {
     try {
       const user = req.user!;
@@ -277,11 +315,15 @@ class AuthController {
     }
   }
 
-  // Update profile
+  /**
+   * Update profile
+   * PATCH /api/auth/profile
+   * Body: { displayName?, about?, profilePicture? }
+   */
   async updateProfile(req: IAuthRequest, res: Response): Promise<void> {
     try {
       const user = req.user!;
-      const { displayName, about, profilePicture } = req.body as { displayName?: string; about?: string; profilePicture?: string };
+      const { displayName, about, profilePicture } = req.body;
 
       if (displayName !== undefined) user.displayName = displayName;
       if (about !== undefined) user.about = about;
@@ -297,11 +339,12 @@ class AuthController {
           displayName: user.displayName,
           profilePicture: user.profilePicture,
           about: user.about
-          }
-        });
-    } catch (error: any) {
-          res.status(500).json({ error: 'Failed to update profile' });
         }
-   }
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: 'Failed to update profile' });
+    }
+  }
 }
+
 export default new AuthController();

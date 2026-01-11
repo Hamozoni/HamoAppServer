@@ -1,26 +1,29 @@
-
+// src/routes/auth.routes.ts
 import { Router } from 'express';
 import authController from '../controllers/auth.controller.js';
 import { authMiddleware } from '../middleware/auth.middleware.js';
 import {
   validatePhoneNumber,
-  validateOTP,
   validateDeviceInfo,
   validateDisplayName,
   handleValidationErrors
 } from '../middleware/validation.middleware.js';
-import { otpLimiter, loginLimiter } from '../middleware/rateLimter.middleware.js';
+import { otpLimiter, loginLimiter } from '../middleware/ratelimter.middleware.js';
 import { body } from 'express-validator';
 
 const router = Router();
 
-// Public routes
-
-// Send OTP
+// Send OTP (SMS or Voice Call)
 router.post(
   '/send-otp',
   otpLimiter,
-  validatePhoneNumber,
+  [
+    ...validatePhoneNumber,
+    body('channel')
+      .optional()
+      .isIn(['sms', 'call'])
+      .withMessage('Channel must be sms or call')
+  ],
   handleValidationErrors,
   authController.sendOTP
 );
@@ -31,7 +34,11 @@ router.post(
   loginLimiter,
   [
     ...validatePhoneNumber,
-    ...validateOTP,
+    body('code')
+      .trim()
+      .notEmpty().withMessage('Verification code is required')
+      .isLength({ min: 4, max: 6 }).withMessage('Code must be 4-6 digits')
+      .isNumeric().withMessage('Code must contain only numbers'),
     ...validateDeviceInfo,
     ...validateDisplayName
   ],
@@ -43,7 +50,13 @@ router.post(
 router.post(
   '/resend-otp',
   otpLimiter,
-  validatePhoneNumber,
+  [
+    ...validatePhoneNumber,
+    body('channel')
+      .optional()
+      .isIn(['sms', 'call'])
+      .withMessage('Channel must be sms or call')
+  ],
   handleValidationErrors,
   authController.resendOTP
 );
@@ -60,11 +73,8 @@ router.post(
 );
 
 // Protected routes
-
-// Get current user
 router.get('/me', authMiddleware, authController.getMe);
 
-// Update profile
 router.patch(
   '/profile',
   authMiddleware,
@@ -77,18 +87,7 @@ router.patch(
   authController.updateProfile
 );
 
-// Logout
-router.post(
-  '/logout',
-  authMiddleware,
-  authController.logout
-);
-
-// Logout from all devices
-router.post(
-  '/logout-all',
-  authMiddleware,
-  authController.logoutAll
-);
+router.post('/logout', authMiddleware, authController.logout);
+router.post('/logout-all', authMiddleware, authController.logoutAll);
 
 export default router;
