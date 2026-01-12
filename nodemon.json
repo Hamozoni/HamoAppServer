@@ -1,6 +1,12 @@
 {
-  "watch": ["src", "index.ts"],
+  "watch": [
+    "src",
+    "index.ts"
+  ],
   "ext": "ts,json",
   "exec": "tsx index.ts",
-  "ignore": ["src/**/*.spec.ts", "node_modules"]
+  "ignore": [
+    "src/**/*.spec.ts",
+    "node_modules"
+  ]
 }

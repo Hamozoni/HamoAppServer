@@ -2,15 +2,15 @@
 import type { NextFunction, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import User from '../models/user.model.js';
-import otpService from '../services/otp.services.js';
 import type { IAuthRequest } from '../types/index.js';
+import TwilioService from '../services/twilio.service.js';
 
 class AuthController {
 
-  async sendOTP(req: Request, res: Response,next:NextFunction): Promise<void> {
+  async sendOTP(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { phoneNumber, channel = 'sms' } = req.body;
-      const result = await otpService.sendOTP(phoneNumber, channel);
+      const { phoneNumber } = req.body;
+      const result = await TwilioService.sendVerificationCode(phoneNumber);
 
       if (!result.success) {
         res.status(400).json({ error: result.error });
@@ -19,7 +19,7 @@ class AuthController {
 
       res.json({
         success: true,
-        message: `Verification code sent via ${channel}`,
+        message: `Verification code sent via sms`,
         expiresIn: result.expiresIn,
       });
       next()
@@ -35,7 +35,7 @@ class AuthController {
       console.log(`🔐 Verifying OTP for ${phoneNumber}`);
 
       // Verify OTP via Twilio
-      const verification = await otpService.verifyOTP(phoneNumber, code);
+      const verification = await TwilioService.verifyCode(phoneNumber, code);
 
       if (!verification.success) {
         res.status(400).json({ error: verification.error });
@@ -46,7 +46,7 @@ class AuthController {
       let isNewUser = false;
 
       if (!user) {
-        
+
         // Register new user
         user = await User.create({
           phoneNumber,
@@ -66,7 +66,7 @@ class AuthController {
       const deviceId = uuidv4();
 
       // Add/update device
-      const existingDeviceIndex : number = user.devices.findIndex(
+      const existingDeviceIndex: number = user.devices.findIndex(
         d => d.platform === deviceInfo.platform && d.deviceName === deviceInfo.deviceName && d.deviceId === deviceInfo.deviceId
       );
 
@@ -100,11 +100,11 @@ class AuthController {
         user: {
           id: user._id,
           phoneNumber: user.phoneNumber,
-          displayName: user.displayName,
-          profilePicture: user.profilePicture,
-          about: user.about,
-          isPhoneVerified: user.isPhoneVerified,
-          createdAt: user.createdAt
+          displayName: user?.displayName,
+          profilePicture: user?.profilePicture,
+          about: user?.about,
+          isPhoneVerified: user?.isPhoneVerified,
+          createdAt: user?.createdAt
         }
       });
     } catch (error: any) {
@@ -115,11 +115,11 @@ class AuthController {
 
   async resendOTP(req: Request, res: Response): Promise<void> {
     try {
-      const { phoneNumber, channel = 'sms' } = req.body;
+      const { phoneNumber } = req.body;
 
       console.log(`🔄 Resending OTP to ${phoneNumber}`);
 
-      const result = await otpService.resendOTP(phoneNumber, channel);
+      const result = await TwilioService.sendVerificationCode(phoneNumber);
 
       if (!result.success) {
         res.status(400).json({ error: result.error });
@@ -269,6 +269,7 @@ class AuthController {
       res.status(500).json({ error: 'Failed to get user' });
     }
   };
+
   async updateProfile(req: IAuthRequest, res: Response): Promise<void> {
     try {
       const user = req.user!;

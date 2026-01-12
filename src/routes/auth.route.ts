@@ -13,16 +13,11 @@ import { body } from 'express-validator';
 
 const router = Router();
 
-// Send OTP (SMS or Voice Call)
 router.post(
   '/send-otp',
   otpLimiter,
   [
     ...validatePhoneNumber,
-    body('channel')
-      .optional()
-      .isIn(['sms', 'call'])
-      .withMessage('Channel must be sms or call')
   ],
   handleValidationErrors,
   authController.sendOTP
@@ -52,10 +47,6 @@ router.post(
   otpLimiter,
   [
     ...validatePhoneNumber,
-    body('channel')
-      .optional()
-      .isIn(['sms', 'call'])
-      .withMessage('Channel must be sms or call')
   ],
   handleValidationErrors,
   authController.resendOTP

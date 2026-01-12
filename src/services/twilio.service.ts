@@ -1,6 +1,13 @@
 // src/services/twilio.service.ts
 import twilio from 'twilio';
 
+export interface IVerificationCheck {
+  success: boolean;
+  sid?: string;
+  error?: string;
+  status?: string;
+  expiresIn?: number;
+}
 class TwilioService {
   private client: twilio.Twilio;
   private verifyServiceSid: string;
@@ -19,38 +26,23 @@ class TwilioService {
    */
   async sendVerificationCode(
     phoneNumber: string,
-    channel: 'sms' | 'call' = 'sms'
-  ): Promise<{ 
-    success: boolean; 
-    sid?: string; 
-    error?: string;
-    status?: string;
-  }> {
+  ): Promise<IVerificationCheck> {
     try {
       const verification = await this.client.verify.v2
         .services(this.verifyServiceSid)
         .verifications
         .create({
           to: phoneNumber,
-          channel: channel, // 'sms' or 'call'
-          locale: 'en' // Can be 'ar' for Arabic
+          channel: 'sms',
+          locale: 'ar'
         });
-
-      console.log('✅ Verification sent:', {
-        sid: verification.sid,
-        to: phoneNumber,
-        channel: verification.channel,
-        status: verification.status
-      });
-
       return {
         success: true,
         sid: verification.sid,
         status: verification.status
       };
     } catch (error: any) {
-      console.error('❌ Twilio Verify send error:', error);
-      
+
       // Handle specific Twilio errors
       if (error.code === 60200) {
         return {
@@ -68,7 +60,7 @@ class TwilioService {
           error: 'Too many requests. Please wait before trying again.'
         };
       }
-      
+
       return {
         success: false,
         error: error.message || 'Failed to send verification code'
@@ -82,11 +74,7 @@ class TwilioService {
   async verifyCode(
     phoneNumber: string,
     code: string
-  ): Promise<{ 
-    success: boolean; 
-    error?: string;
-    status?: string;
-  }> {
+  ): Promise<IVerificationCheck> {
     try {
       const verificationCheck = await this.client.verify.v2
         .services(this.verifyServiceSid)
@@ -96,27 +84,20 @@ class TwilioService {
           code: code
         });
 
-      console.log('✅ Verification check:', {
-        to: phoneNumber,
-        status: verificationCheck.status,
-        valid: verificationCheck.valid
-      });
-
       if (verificationCheck.status === 'approved') {
-        return { 
+        return {
           success: true,
           status: 'approved'
         };
       } else {
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: 'Invalid or expired verification code',
           status: verificationCheck.status
         };
       }
     } catch (error: any) {
-      console.error('❌ Twilio Verify check error:', error);
-      
+
       // Handle specific errors
       if (error.code === 60200) {
         return {
@@ -134,7 +115,7 @@ class TwilioService {
           error: 'No verification found or code expired'
         };
       }
-      
+
       return {
         success: false,
         error: error.message || 'Verification failed'
@@ -146,20 +127,16 @@ class TwilioService {
    * Cancel a pending verification
    */
   async cancelVerification(
-    phoneNumber: string,
     sid: string
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<IVerificationCheck> {
     try {
       await this.client.verify.v2
         .services(this.verifyServiceSid)
         .verifications(sid)
         .update({ status: 'canceled' });
 
-      console.log('✅ Verification cancelled:', sid);
-      
       return { success: true };
     } catch (error: any) {
-      console.error('❌ Cancel verification error:', error);
       return {
         success: false,
         error: error.message
@@ -172,11 +149,7 @@ class TwilioService {
    */
   async checkVerificationStatus(
     sid: string
-  ): Promise<{ 
-    success: boolean; 
-    status?: string; 
-    error?: string;
-  }> {
+  ): Promise<IVerificationCheck> {
     try {
       const verification = await this.client.verify.v2
         .services(this.verifyServiceSid)

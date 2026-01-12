@@ -4,7 +4,7 @@ import rateLimit from 'express-rate-limit';
 // OTP sending rate limiter
 export const otpLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '5'),
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '3'),
   message: 'Too many OTP requests, please try again later',
   standardHeaders: true,
   legacyHeaders: false
