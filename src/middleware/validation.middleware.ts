@@ -17,15 +17,6 @@ export const validateOTP = [
     .isNumeric().withMessage('OTP must contain only numbers')
 ];
 
-export const validateDeviceInfo = [
-  body('deviceInfo').isObject().withMessage('Device info is required'),
-  body('deviceInfo.platform')
-    .isIn(['ios', 'android', 'web'])
-    .withMessage('Platform must be ios, android, or web'),
-  body('deviceInfo.deviceName')
-    .notEmpty()
-    .withMessage('Device name is required')
-];
 
 export const validateDisplayName = [
   body('displayName')
@@ -42,6 +33,7 @@ export const handleValidationErrors = (
 ): void => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    console.log(errors.array());
     res.status(400).json({ errors: errors.array() });
     return;
   }

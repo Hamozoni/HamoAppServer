@@ -2,7 +2,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwtService from '../services/jwt.service.js';
 import User from '../models/user.model.js';
-import type { IAuthRequest } from '../types/index.js';
+import type { IAuthRequest } from '../types/auth.js';
 
 export const authMiddleware = async (
   req: Request,
@@ -18,7 +18,7 @@ export const authMiddleware = async (
       return;
     }
 
-    const token : string = authHeader.split(' ')[1] as string;
+    const token: string = authHeader.split(' ')[1] as string;
 
     // Verify token
     const decoded = jwtService.verifyAccessToken(token);

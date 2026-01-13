@@ -1,25 +1,44 @@
 // src/services/jwt.service.ts
 import jwt from 'jsonwebtoken';
-import type { IJWTPayload } from '../types/index.js';
+import crypto from 'crypto';
 
+
+export interface IJWTPayload {
+  userId: string;
+  deviceId: string;
+  type: 'access' | 'refresh';
+}
 class JWTService {
-  
+
   // Generate access token
-  generateAccessToken(payload: Omit<IJWTPayload, 'type'>): string {
+  generateAccessToken(payload: IJWTPayload): string {
     return jwt.sign(
       { ...payload, type: 'access' },
       process.env.JWT_ACCESS_SECRET!,
-      { expiresIn: '30d' }
+      { expiresIn: '15m' }
     );
   }
 
   // Generate refresh token
-  generateRefreshToken(payload: Omit<IJWTPayload, 'type'>): string {
-    return jwt.sign(
-      { ...payload, type: 'refresh' },
+  generateRefreshToken(payload: IJWTPayload): { refreshTokenHash: string, refreshToken: string } {
+
+    const refreshToken = jwt.sign(
+      {
+        userId: payload.userId.toString(),
+        deviceId: payload.deviceId,
+        type: "refresh"
+      },
       process.env.JWT_REFRESH_SECRET!,
-      { expiresIn: '30d' }
+      { expiresIn: "30d" }
     );
+
+    const refreshTokenHash = crypto
+      .createHash("sha256")
+      .update(refreshToken)
+      .digest("hex");
+
+
+    return { refreshTokenHash, refreshToken };
   }
 
   // Verify access token

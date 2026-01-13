@@ -2,8 +2,12 @@
 import type { NextFunction, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import User from '../models/user.model.js';
-import type { IAuthRequest } from '../types/index.js';
+
 import TwilioService from '../services/twilio.service.js';
+import type { IJWTPayload } from '../services/jwt.service.js';
+import Device from '../models/device.model.js';
+import Session from '../models/session.model.js';
+import jwtService from '../services/jwt.service.js';
 
 class AuthController {
 
@@ -30,273 +34,245 @@ class AuthController {
     }
   };
 
+
+
   async verifyOTP(req: Request, res: Response): Promise<void> {
     try {
-      const { phoneNumber, code, deviceInfo } = req.body;
+      const { phoneNumber, code, device } = req.body;
 
-      console.log(`🔐 Verifying OTP for ${phoneNumber}`);
-
-      // Verify OTP via Twilio
-      const verification = await TwilioService.verifyCode(phoneNumber, code);
-
-      if (!verification.success) {
-        res.status(400).json({ error: verification.error });
+      if (!phoneNumber || !code || !device?.deviceId || device.platform !== "ios" && device.platform !== "android") {
+        res.status(400).json({ message: "Invalid request" });
         return;
       }
-      // Find or create user
+
+      // 1️⃣ Verify OTP with Twilio
+      // const verification = await TwilioService.verifyCode(phoneNumber, code);
+
+      // if (!verification.success) {
+      //   res.status(401).json({ message: "Invalid OTP" });
+      //   return;
+      // }
+
+      // 2️⃣ Create or fetch user
       let user = await User.findOne({ phoneNumber });
-      let isNewUser = false;
 
       if (!user) {
-
-        // Register new user
         user = await User.create({
           phoneNumber,
           isPhoneVerified: true
         });
-        isNewUser = true;
-      } else {
-
-        // Update verification status
-        if (!user.isPhoneVerified) {
-          user.isPhoneVerified = true;
-        }
-        user.lastSeen = new Date();
       }
 
-      // Generate device ID
-      const deviceId = uuidv4();
-
-      // Add/update device
-      const existingDeviceIndex: number = user.devices.findIndex(
-        d => d.platform === deviceInfo.platform && d.deviceName === deviceInfo.deviceName && d.deviceId === deviceInfo.deviceId
+      // 3️⃣ Register / update device
+      await Device.findOneAndUpdate(
+        { userId: user._id, deviceId: device.deviceId },
+        {
+          userId: user._id,
+          isPrimary: device.platform === "ios" || device.platform === "android",
+          ...device
+        },
+        { upsert: true }
       );
 
-      if (existingDeviceIndex >= 0) {
-        const existingDevice = user.devices[existingDeviceIndex];
-        if (existingDevice) {
-          existingDevice.lastActive = new Date();
-        }
-      } else {
-        user.devices.push({
-          ...deviceInfo,
-          deviceId: deviceInfo?.deviceId || deviceId,
-        });
-      }
+      // 4️⃣ Create refresh token
 
-      // Generate tokens
-      const accessToken = user.generateAccessToken();
-      const refreshToken = user.generateRefreshToken(deviceId, deviceInfo);
-
-      // Clean expired tokens
-      user.cleanExpiredTokens();
-
-      await user.save();
-
-      res.status(isNewUser ? 201 : 200).json({
-        success: true,
-        isNewUser,
-        accessToken,
-        refreshToken,
-        deviceId,
-        user: {
-          id: user._id,
-          phoneNumber: user.phoneNumber,
-          displayName: user?.displayName,
-          profilePicture: user?.profilePicture,
-          about: user?.about,
-          isPhoneVerified: user?.isPhoneVerified,
-          createdAt: user?.createdAt
-        }
+      const { refreshTokenHash, refreshToken } = jwtService.generateRefreshToken({
+        userId: user._id.toString(),
+        deviceId: device.deviceId,
+        type: "refresh"
       });
-    } catch (error: any) {
-      console.error('Verify OTP error:', error);
-      res.status(500).json({ error: 'Verification failed' });
-    }
-  };
 
-  async resendOTP(req: Request, res: Response): Promise<void> {
-    try {
-      const { phoneNumber } = req.body;
+      // 5️⃣ Save session
+      await Session.create({
+        userId: user._id,
+        deviceId: device.deviceId,
+        refreshTokenHash,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        ip: req.ip,
+        userAgent: req.headers["user-agent"]
+      });
 
-      console.log(`🔄 Resending OTP to ${phoneNumber}`);
-
-      const result = await TwilioService.sendVerificationCode(phoneNumber);
-
-      if (!result.success) {
-        res.status(400).json({ error: result.error });
-        return;
-      }
+      // 6️⃣ Create access token
+      const accessToken = jwtService.generateAccessToken({
+        userId: user._id.toString(),
+        deviceId: device.deviceId,
+        type: "access"
+      });
 
       res.json({
-        success: true,
-        message: 'Verification code resent',
-        expiresIn: result.expiresIn
+        user: {
+          id: user._id,
+          phoneNumber: user.phoneNumber
+        },
+        accessToken,
+        refreshToken
       });
-    } catch (error: any) {
+      return;
+    }
+    catch (error: any) {
       console.error('Resend OTP error:', error);
       res.status(500).json({ error: 'Failed to resend verification code' });
     }
   };
 
-  async refreshToken(req: Request, res: Response): Promise<void> {
-    try {
-      const { refreshToken, deviceId } = req.body;
+  // async refreshToken(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     const { refreshToken, deviceId } = req.body;
 
-      if (!refreshToken || !deviceId) {
-        res.status(400).json({ error: 'Refresh token and device ID required' });
-        return;
-      }
+  //     if (!refreshToken || !deviceId) {
+  //       res.status(400).json({ error: 'Refresh token and device ID required' });
+  //       return;
+  //     }
 
-      // Verify refresh token
-      const jwtService = require('../services/jwt.service').default;
-      const decoded = jwtService.verifyRefreshToken(refreshToken);
+  //     // Verify refresh token
+  //     const jwtService = require('../services/jwt.service').default;
+  //     const decoded = jwtService.verifyRefreshToken(refreshToken);
 
-      // Find user
-      const user = await User.findById(decoded.userId);
+  //     // Find user
+  //     const user = await User.findById(decoded.userId);
 
-      if (!user) {
-        res.status(401).json({ error: 'User not found' });
-        return;
-      }
+  //     if (!user) {
+  //       res.status(401).json({ error: 'User not found' });
+  //       return;
+  //     }
 
-      // Check if refresh token exists and is valid
-      const storedToken = user.refreshTokens.find(
-        rt => rt.token === refreshToken && rt.deviceId === deviceId
-      );
+  //     // Check if refresh token exists and is valid
+  //     const storedToken = user.refreshTokens.find(
+  //       rt => rt.token === refreshToken && rt.deviceId === deviceId
+  //     );
 
-      if (!storedToken) {
-        res.status(401).json({ error: 'Invalid refresh token' });
-        return;
-      }
+  //     if (!storedToken) {
+  //       res.status(401).json({ error: 'Invalid refresh token' });
+  //       return;
+  //     }
 
-      if (storedToken.expiresAt < new Date()) {
-        res.status(401).json({ error: 'Refresh token expired' });
-        return;
-      }
+  //     if (storedToken.expiresAt < new Date()) {
+  //       res.status(401).json({ error: 'Refresh token expired' });
+  //       return;
+  //     }
 
-      // Generate new access token
-      const accessToken = user.generateAccessToken();
+  //     // Generate new access token
+  //     const accessToken = user.generateAccessToken();
 
-      // Rotate refresh token (security best practice)
-      user.refreshTokens = user.refreshTokens.filter(
-        rt => rt.token !== refreshToken
-      );
+  //     // Rotate refresh token (security best practice)
+  //     user.refreshTokens = user.refreshTokens.filter(
+  //       rt => rt.token !== refreshToken
+  //     );
 
-      const newRefreshToken = user.generateRefreshToken(
-        deviceId,
-        storedToken.deviceInfo
-      );
+  //     const newRefreshToken = user.generateRefreshToken(
+  //       deviceId,
+  //       storedToken.deviceInfo
+  //     );
 
-      await user.save();
+  //     await user.save();
 
-      res.json({
-        success: true,
-        accessToken,
-        refreshToken: newRefreshToken
-      });
-    } catch (error: any) {
-      console.error('Refresh token error:', error);
-      res.status(401).json({ error: 'Invalid refresh token' });
-    }
-  }
+  //     res.json({
+  //       success: true,
+  //       accessToken,
+  //       refreshToken: newRefreshToken
+  //     });
+  //   } catch (error: any) {
+  //     console.error('Refresh token error:', error);
+  //     res.status(401).json({ error: 'Invalid refresh token' });
+  //   }
+  // }
 
-  async logout(req: IAuthRequest, res: Response): Promise<void> {
-    try {
-      const { deviceId, refreshToken } = req.body;
-      const user = req.user!;
+  // async logout(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     const { deviceId, refreshToken } = req.body;
+  //     const user = req.user!;
 
-      // Remove refresh token
-      if (refreshToken) {
-        user.refreshTokens = user.refreshTokens.filter(
-          rt => rt.token !== refreshToken
-        );
-      } else if (deviceId) {
-        user.refreshTokens = user.refreshTokens.filter(
-          rt => rt.deviceId !== deviceId
-        );
-      }
+  //     // Remove refresh token
+  //     if (refreshToken) {
+  //       user.refreshTokens = user.refreshTokens.filter(
+  //         rt => rt.token !== refreshToken
+  //       );
+  //     } else if (deviceId) {
+  //       user.refreshTokens = user.refreshTokens.filter(
+  //         rt => rt.deviceId !== deviceId
+  //       );
+  //     }
 
-      // Remove device
-      if (deviceId) {
-        user.devices = user.devices.filter(d => d.deviceId !== deviceId);
-      }
+  //     // Remove device
+  //     if (deviceId) {
+  //       user.devices = user.devices.filter(d => d.deviceId !== deviceId);
+  //     }
 
-      await user.save();
+  //     await user.save();
 
-      res.json({ success: true, message: 'Logged out successfully' });
-    } catch (error: any) {
-      console.error('Logout error:', error);
-      res.status(500).json({ error: 'Logout failed' });
-    }
-  };
+  //     res.json({ success: true, message: 'Logged out successfully' });
+  //   } catch (error: any) {
+  //     console.error('Logout error:', error);
+  //     res.status(500).json({ error: 'Logout failed' });
+  //   }
+  // };
 
-  async logoutAll(req: IAuthRequest, res: Response): Promise<void> {
-    try {
-      const user = req.user!;
+  // async logoutAll(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     const user = req.user!;
 
-      user.refreshTokens = [];
-      user.devices = [];
+  //     user.refreshTokens = [];
+  //     user.devices = [];
 
-      await user.save();
+  //     await user.save();
 
-      res.json({ success: true, message: 'Logged out from all devices' });
-    } catch (error: any) {
-      console.error('Logout all error:', error);
-      res.status(500).json({ error: 'Logout failed' });
-    }
-  };
+  //     res.json({ success: true, message: 'Logged out from all devices' });
+  //   } catch (error: any) {
+  //     console.error('Logout all error:', error);
+  //     res.status(500).json({ error: 'Logout failed' });
+  //   }
+  // };
 
-  async getMe(req: IAuthRequest, res: Response): Promise<void> {
-    try {
-      const user = req.user!;
+  // async getMe(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     const user = req.user!;
 
-      res.json({
-        id: user._id,
-        phoneNumber: user.phoneNumber,
-        displayName: user.displayName,
-        profilePicture: user.profilePicture,
-        about: user.about,
-        isPhoneVerified: user.isPhoneVerified,
-        devices: user.devices.map(d => ({
-          deviceId: d.deviceId,
-          platform: d.platform,
-          deviceName: d.deviceName,
-          lastActive: d.lastActive
-        })),
-        createdAt: user.createdAt,
-        lastSeen: user.lastSeen
-      });
-    } catch (error: any) {
-      res.status(500).json({ error: 'Failed to get user' });
-    }
-  };
+  //     res.json({
+  //       id: user._id,
+  //       phoneNumber: user.phoneNumber,
+  //       displayName: user.displayName,
+  //       profilePicture: user.profilePicture,
+  //       about: user.about,
+  //       isPhoneVerified: user.isPhoneVerified,
+  //       devices: user.devices.map(d => ({
+  //         deviceId: d.deviceId,
+  //         platform: d.platform,
+  //         deviceName: d.deviceName,
+  //         lastActive: d.lastActive
+  //       })),
+  //       createdAt: user.createdAt,
+  //       lastSeen: user.lastSeen
+  //     });
+  //   } catch (error: any) {
+  //     res.status(500).json({ error: 'Failed to get user' });
+  //   }
+  // };
 
-  async updateProfile(req: IAuthRequest, res: Response): Promise<void> {
-    try {
-      const user = req.user!;
-      const { displayName, about, profilePicture } = req.body;
+  // async updateProfile(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     const user = req.user!;
+  //     const { displayName, about, profilePicture } = req.body;
 
-      if (displayName !== undefined) user.displayName = displayName;
-      if (about !== undefined) user.about = about;
-      if (profilePicture !== undefined) user.profilePicture = profilePicture;
+  //     if (displayName !== undefined) user.displayName = displayName;
+  //     if (about !== undefined) user.about = about;
+  //     if (profilePicture !== undefined) user.profilePicture = profilePicture;
 
-      await user.save();
+  //     await user.save();
 
-      res.json({
-        success: true,
-        user: {
-          id: user._id,
-          phoneNumber: user.phoneNumber,
-          displayName: user.displayName,
-          profilePicture: user.profilePicture,
-          about: user.about
-        }
-      });
-    } catch (error: any) {
-      res.status(500).json({ error: 'Failed to update profile' });
-    }
-  }
+  //     res.json({
+  //       success: true,
+  //       user: {
+  //         id: user._id,
+  //         phoneNumber: user.phoneNumber,
+  //         displayName: user.displayName,
+  //         profilePicture: user.profilePicture,
+  //         about: user.about
+  //       }
+  //     });
+  //   } catch (error: any) {
+  //     res.status(500).json({ error: 'Failed to update profile' });
+  //   }
+  // }
 }
 
 export default new AuthController();
