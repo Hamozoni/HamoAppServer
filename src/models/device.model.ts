@@ -44,7 +44,8 @@ const DeviceSchema = new Schema<IDevice>(
         isActive: {
             type: Boolean,
             default: true
-        }
+        },
+        model: String
     },
     {
         timestamps: true

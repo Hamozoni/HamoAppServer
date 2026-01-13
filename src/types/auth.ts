@@ -20,12 +20,13 @@ export interface IDevice {
     linkedAt: Date,
     pushToken: string,
     isActive: boolean
+    model?: string,
 }
 
 export interface ISession {
     userId: mongoose.Types.ObjectId,
     deviceId: string,
-    tokenHash: string,
+    refreshTokenHash: string,
     expiresAt: Date,
     lastUsedAt: Date,
     ipAddress: string,

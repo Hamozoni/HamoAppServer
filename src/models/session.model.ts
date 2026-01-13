@@ -17,7 +17,7 @@ const SessionSchema = new Schema<ISession>(
             index: true
         },
 
-        tokenHash: {
+        refreshTokenHash: {
             type: String,
             required: true,
             unique: true

@@ -2,8 +2,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwtService from '../services/jwt.service.js';
 import User from '../models/user.model.js';
-import type { IAuthRequest } from '../types/auth.js';
-
 export const authMiddleware = async (
   req: Request,
   res: Response,
@@ -32,8 +30,8 @@ export const authMiddleware = async (
     }
 
     // Attach user to request
-    (req as IAuthRequest).user = user;
-    (req as IAuthRequest).userId = user._id.toString();
+    (req as any).user = user;
+    (req as any).userId = user._id.toString();
 
     next();
   } catch (error: any) {
