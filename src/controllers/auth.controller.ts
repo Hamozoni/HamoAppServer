@@ -8,19 +8,21 @@ import TwilioService from '../services/twilio.service.js';
 class AuthController {
 
   async sendOTP(req: Request, res: Response, next: NextFunction): Promise<void> {
+
     try {
       const { phoneNumber } = req.body;
-      const result = await TwilioService.sendVerificationCode(phoneNumber);
+      console.log(`📱 Sending OTP to ${phoneNumber}`);
+      // const result = await TwilioService.sendVerificationCode(phoneNumber);
 
-      if (!result.success) {
-        res.status(400).json({ error: result.error });
-        return;
-      }
+      // if (!result.success) {
+      //   res.status(400).json({ error: result.error });
+      //   return;
+      // }
 
       res.json({
         success: true,
         message: `Verification code sent via sms`,
-        expiresIn: result.expiresIn,
+        // expiresIn: result.expiresIn,
       });
       next()
     } catch (error: any) {

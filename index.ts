@@ -3,8 +3,6 @@ import dotenv from "dotenv";
 import http from 'http';
 import app from "./src/app.js";
 import connect_db from "./src/config/db.js";
-import SocketService from "./src/services/socket.service.js";
-import crypto from "crypto"
 
 
 
@@ -16,15 +14,15 @@ connect_db();
 
 const server = http.createServer(app);
 
-const socket = new SocketService(server);
+// const socket = new SocketService(server);
 
-app.set('socket', socket);
+// app.set('socket', socket);
 
 const PORT = process.env.PORT || 5500;
 
 server.listen(PORT, () => {
   console.log(`server is listening to port ${PORT}`);
-  console.log(crypto.randomBytes(32).toString('hex'))
+
 }).on('error', (err: NodeJS.ErrnoException) => {
   if (err.code === 'EADDRINUSE') {
 

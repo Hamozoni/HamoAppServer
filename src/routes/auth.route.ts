@@ -14,7 +14,7 @@ import { body } from 'express-validator';
 const router = Router();
 
 router.post(
-  '/send-otp',
+  '/send_otp',
   otpLimiter,
   [
     ...validatePhoneNumber,
