@@ -1,10 +1,8 @@
 // src/controllers/auth.controller.ts
 import type { NextFunction, Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 import User from '../models/user.model.js';
 
 import TwilioService from '../services/twilio.service.js';
-import type { IJWTPayload } from '../services/jwt.service.js';
 import Device from '../models/device.model.js';
 import Session from '../models/session.model.js';
 import jwtService from '../services/jwt.service.js';
@@ -16,25 +14,25 @@ class AuthController {
     try {
       const { phoneNumber } = req.body;
       console.log(`📱 Sending OTP to ${phoneNumber}`);
-      // const result = await TwilioService.sendVerificationCode(phoneNumber);
+      const result = await TwilioService.sendVerificationCode(phoneNumber);
 
-      // if (!result.success) {
-      //   res.status(400).json({ error: result.error });
-      //   return;
-      // }
+      console.log(result);
+
+      if (!result.success) {
+        res.status(400).json({ error: result.error });
+        return;
+      }
 
       res.json({
         success: true,
         message: `Verification code sent via sms`,
-        // expiresIn: result.expiresIn,
+        expiresIn: result.expiresIn,
       });
       next()
     } catch (error: any) {
       res.status(500).json({ error: 'Failed to send verification code' });
     }
   };
-
-
 
   async verifyOTP(req: Request, res: Response): Promise<void> {
     try {
@@ -46,12 +44,12 @@ class AuthController {
       }
 
       // 1️⃣ Verify OTP with Twilio
-      // const verification = await TwilioService.verifyCode(phoneNumber, code);
+      const verification = await TwilioService.verifyCode(phoneNumber, otp);
 
-      // if (!verification.success) {
-      //   res.status(401).json({ message: "Invalid OTP" });
-      //   return;
-      // }
+      if (!verification.success) {
+        res.status(401).json({ message: "Invalid OTP" });
+        return;
+      }
 
       // 2️⃣ Create or fetch user
       let user = await User.findOne({ phoneNumber });

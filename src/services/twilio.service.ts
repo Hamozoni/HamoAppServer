@@ -1,5 +1,7 @@
 // src/services/twilio.service.ts
 import twilio from 'twilio';
+import dotenv from 'dotenv';
+dotenv.config();
 
 export interface IVerificationCheck {
   success: boolean;
@@ -8,6 +10,7 @@ export interface IVerificationCheck {
   status?: string;
   expiresIn?: number;
 }
+
 class TwilioService {
   private client: twilio.Twilio;
   private verifyServiceSid: string;
@@ -15,9 +18,9 @@ class TwilioService {
   constructor() {
     this.client = twilio(
       process.env.TWILIO_ACCOUNT_SID!,
-      process.env.TWILIO_AUTH_TOKEN!
+      process.env.TWILIO_TOKEN!
     );
-    this.verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID!;
+    this.verifyServiceSid = process.env.TWILIO_SERVICES_TOKEN!;
   }
 
   /**
