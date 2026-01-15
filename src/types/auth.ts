@@ -1,14 +1,18 @@
 import mongoose, { Document } from "mongoose"
 
-export interface IUser {
+export interface IUser extends Document {
+    _id: mongoose.Types.ObjectId,
     phoneNumber: string,
     displayName: string,
     profilePicture: String,
     about: string,
-    isPhoneVerified: boolean
+    isPhoneVerified: boolean,
+    createdAt: Date,
+    updatedAt: Date
+
 }
 
-export interface IDevice {
+export interface IDevice extends Document {
     userId: mongoose.Types.ObjectId,
     deviceId: string,
     platform: string,
@@ -20,10 +24,12 @@ export interface IDevice {
     linkedAt: Date,
     pushToken: string,
     isActive: boolean
-    model?: string,
+    model: any,
+    createdAt: Date,
+    updatedAt: Date
 }
 
-export interface ISession {
+export interface ISession extends Document {
     userId: mongoose.Types.ObjectId,
     deviceId: string,
     refreshTokenHash: string,
@@ -31,5 +37,7 @@ export interface ISession {
     lastUsedAt: Date,
     ipAddress: string,
     userAgent: string,
-    revoked: boolean
+    revoked: boolean,
+    createdAt: Date,
+    updatedAt: Date
 }

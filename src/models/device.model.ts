@@ -45,7 +45,7 @@ const DeviceSchema = new Schema<IDevice>(
             type: Boolean,
             default: true
         },
-        model: String
+        model: { type: String, required: true, default: "Unknown" }
     },
     {
         timestamps: true

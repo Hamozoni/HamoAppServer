@@ -1,14 +1,13 @@
 // src/routes/auth.routes.ts
 import { Router } from 'express';
 import authController from '../controllers/auth.controller.js';
-import { authMiddleware } from '../middleware/auth.middleware.js';
+
 import {
   validatePhoneNumber,
   handleValidationErrors,
   validateOTP
 } from '../middleware/validation.middleware.js';
 import { otpLimiter, loginLimiter } from '../middleware/rateLimter.middleware.js';
-import { body } from 'express-validator';
 
 const router = Router();
 
