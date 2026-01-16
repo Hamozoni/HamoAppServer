@@ -1,4 +1,6 @@
-import { v2 as cloudinary } from "cloudinary";
+import cloudinary from "../config/cloudinary.js";
+import dotenv from "dotenv";
+dotenv.config();
 
 export type CloudinaryResourceType = "image" | "video" | "raw" | "auto";
 
@@ -17,17 +19,11 @@ interface SignatureResponse {
     folder: string;
     resourceType: CloudinaryResourceType;
     maxFileSize: number;
-    publicId?: string;
+    publicId?: any;
 }
 
 export class CloudinaryService {
-    constructor() {
-        cloudinary.config({
-            cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
-            api_key: process.env.CLOUDINARY_API_KEY!,
-            api_secret: process.env.CLOUDINARY_API_SECRET!,
-        });
-    }
+
 
     /**
      * Main entry to generate upload signature
@@ -68,7 +64,7 @@ export class CloudinaryService {
         return {
             signature,
             timestamp,
-            cloudName: process.env.CLOUDINARY_CLOUD_NAME!,
+            cloudName: process.env.CLOUDINARY_NAME!,
             apiKey: process.env.CLOUDINARY_API_KEY!,
             folder: uploadFolder,
             resourceType,
