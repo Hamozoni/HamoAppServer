@@ -1,8 +1,16 @@
 import type { Request, Response } from "express";
-import { CloudinaryService } from "../services/cloudinary.service.js";
+import cloudinaryService from "../services/cloudinary.service.js";
 
-const cloudinaryService = new CloudinaryService();
 class CloudinaryController {
+
+    public getProfileUploadSignature(req: Request, res: Response) {
+        const userId = (req as any)?.user?.userId;
+        console.log(userId);
+
+        const data = cloudinaryService.generateProfilePictureSignature(userId);
+
+        return res.status(200).json(data);
+    }
 
     public getUploadSignature(req: Request, res: Response) {
         const userId = (req as any).user.id; // from auth middleware

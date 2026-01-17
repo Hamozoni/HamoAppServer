@@ -22,7 +22,7 @@ interface SignatureResponse {
     publicId?: any;
 }
 
-export class CloudinaryService {
+class CloudinaryService {
 
 
     /**
@@ -115,6 +115,44 @@ export class CloudinaryService {
         }
     }
 
+    // inside CloudinaryService class
+
+    public generateProfilePictureSignature(userId: string) {
+        const timestamp = Math.round(Date.now() / 1000);
+
+        const publicId = `profile_pictures/${userId}/avatar`;
+
+        const paramsToSign = {
+            timestamp,
+            folder: `profile_pictures/${userId}`,
+            public_id: "avatar",
+            resource_type: "image",
+            overwrite: true,
+            invalidate: true, // CDN cache invalidation
+            transformation: [
+                { width: 512, height: 512, crop: "fill", gravity: "face" },
+                { quality: "auto", fetch_format: "auto" },
+            ],
+            max_file_size: 5 * 1024 * 1024, // 5MB
+        };
+
+        const signature = cloudinary.utils.api_sign_request(
+            paramsToSign,
+            process.env.CLOUDINARY_API_SECRET!
+        );
+
+        return {
+            signature,
+            timestamp,
+            cloudName: process.env.CLOUDINARY_NAME!,
+            apiKey: process.env.CLOUDINARY_API_KEY!,
+            uploadUrl: `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_NAME}/image/upload`,
+            publicId,
+            folder: `profile_pictures/${userId}`,
+        };
+    }
+
+
     /**
      * Folder structure builder
      * Example: chats/images/{userId}
@@ -130,5 +168,8 @@ export class CloudinaryService {
 
         return `${typeFolder}/${userId}`;
     }
-}
+};
+
+export default new CloudinaryService();
+
 

@@ -12,6 +12,7 @@ export const authMiddleware = async (
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log("No token provided");
       res.status(401).json({ error: 'No token provided' });
       return;
     }
@@ -20,6 +21,8 @@ export const authMiddleware = async (
 
     // Verify token
     const decoded = jwtService.verifyAccessToken(token);
+
+    console.log(decoded);
 
     // Get user
     const user = await User.findById(decoded.userId);
