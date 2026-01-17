@@ -1,7 +1,6 @@
 // src/controllers/auth.controller.ts
 import type { NextFunction, Request, Response } from 'express';
 import User from '../models/user.model.js';
-
 import TwilioService from '../services/twilio.service.js';
 import Device from '../models/device.model.js';
 import Session from '../models/session.model.js';
@@ -113,67 +112,83 @@ class AuthController {
     }
   };
 
-  // async refreshToken(req: Request, res: Response): Promise<void> {
-  //   try {
-  //     const { refreshToken, deviceId } = req.body;
+  static async refresh(req: Request, res: Response) {
+    try {
+      const { refreshToken } = req.body;
 
-  //     if (!refreshToken || !deviceId) {
-  //       res.status(400).json({ error: 'Refresh token and device ID required' });
-  //       return;
-  //     }
+      if (!refreshToken) {
+        return res.status(401).json({ message: "Refresh token required" });
+      }
 
-  //     // Verify refresh token
-  //     const jwtService = require('../services/jwt.service').default;
-  //     const decoded = jwtService.verifyRefreshToken(refreshToken);
+      // 1️⃣ Verify refresh token (JWT + expiry)
+      const payload = jwtService.verifyRefreshToken(refreshToken);
 
-  //     // Find user
-  //     const user = await User.findById(decoded.userId);
+      if (payload.type !== "refresh") {
+        return res.status(401).json({ message: "Invalid token type" });
+      }
 
-  //     if (!user) {
-  //       res.status(401).json({ error: 'User not found' });
-  //       return;
-  //     }
+      const { userId, deviceId } = payload;
 
-  //     // Check if refresh token exists and is valid
-  //     const storedToken = user.refreshTokens.find(
-  //       rt => rt.token === refreshToken && rt.deviceId === deviceId
-  //     );
+      // 2️⃣ Hash provided refresh token
+      const providedHash = jwtService.generateRefreshToken(refreshToken);
 
-  //     if (!storedToken) {
-  //       res.status(401).json({ error: 'Invalid refresh token' });
-  //       return;
-  //     }
+      // 3️⃣ Find active session
+      const session = await Session.findOne({
+        userId,
+        deviceId,
+        revoked: false,
+        expiresAt: { $gt: new Date() },
+      });
 
-  //     if (storedToken.expiresAt < new Date()) {
-  //       res.status(401).json({ error: 'Refresh token expired' });
-  //       return;
-  //     }
+      if (!session || session.refreshTokenHash !== providedHash) {
+        // Refresh token reuse or stolen token
+        if (session) {
+          session.revoked = true;
+          await session.save();
+        }
 
-  //     // Generate new access token
-  //     const accessToken = user.generateAccessToken();
+        return res.status(401).json({ message: "Invalid refresh session" });
+      }
 
-  //     // Rotate refresh token (security best practice)
-  //     user.refreshTokens = user.refreshTokens.filter(
-  //       rt => rt.token !== refreshToken
-  //     );
+      // 4️⃣ Rotate refresh token
+      const {
+        refreshToken: newRefreshToken,
+        refreshTokenHash: newRefreshTokenHash,
+      } = jwtService.generateRefreshToken({
+        userId,
+        deviceId,
+        type: "refresh",
+      });
 
-  //     const newRefreshToken = user.generateRefreshToken(
-  //       deviceId,
-  //       storedToken.deviceInfo
-  //     );
+      // Refresh token TTL (match JWT expiry)
+      const refreshTTL = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-  //     await user.save();
+      session.refreshTokenHash = newRefreshTokenHash;
+      session.expiresAt = new Date(Date.now() + refreshTTL);
+      session.lastUsedAt = new Date();
+      await session.save();
 
-  //     res.json({
-  //       success: true,
-  //       accessToken,
-  //       refreshToken: newRefreshToken
-  //     });
-  //   } catch (error: any) {
-  //     console.error('Refresh token error:', error);
-  //     res.status(401).json({ error: 'Invalid refresh token' });
-  //   }
-  // }
+      // 5️⃣ Issue new access token
+      const accessToken = jwtService.generateAccessToken({
+        userId,
+        deviceId,
+        type: "access",
+      });
+
+      return res.json({
+        accessToken,
+        refreshToken: newRefreshToken,
+        expiresIn: 15 * 60, // seconds
+      });
+    } catch (error: any) {
+      console.error("Refresh error:", error.message);
+
+      return res.status(401).json({
+        message: error.message || "Refresh failed",
+      });
+    }
+  }
+
 
   // async logout(req: Request, res: Response): Promise<void> {
   //   try {
