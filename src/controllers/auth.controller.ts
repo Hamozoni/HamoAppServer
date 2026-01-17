@@ -130,7 +130,7 @@ class AuthController {
       const { userId, deviceId } = payload;
 
       // 2️⃣ Hash provided refresh token
-      const providedHash = jwtService.generateRefreshToken(refreshToken);
+      const { refreshTokenHash } = jwtService.generateRefreshToken(refreshToken);
 
       // 3️⃣ Find active session
       const session = await Session.findOne({
@@ -140,7 +140,7 @@ class AuthController {
         expiresAt: { $gt: new Date() },
       });
 
-      if (!session || session.refreshTokenHash !== providedHash) {
+      if (!session || session.refreshTokenHash !== refreshTokenHash) {
         // Refresh token reuse or stolen token
         if (session) {
           session.revoked = true;
