@@ -112,7 +112,7 @@ class AuthController {
     }
   };
 
-  static async refresh(req: Request, res: Response) {
+  static async refreshToken(req: Request, res: Response) {
     try {
       const { refreshToken } = req.body;
 
