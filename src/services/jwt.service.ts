@@ -20,27 +20,26 @@ class JWTService {
   }
 
   // Generate refresh token
-  generateRefreshToken(payload: IJWTPayload): { refreshTokenHash: string, refreshToken: string } {
+  generateRefreshToken(payload: IJWTPayload): string {
 
     const refreshToken = jwt.sign(
       {
-        userId: payload.userId.toString(),
+        userId: payload.userId,
         deviceId: payload.deviceId,
-        type: "refresh"
+        type: payload.type || "refresh"
       },
       process.env.JWT_REFRESH_SECRET!,
       { expiresIn: "30d" }
     );
-
-    const refreshTokenHash = crypto
-      .createHash("sha256")
-      .update(refreshToken)
-      .digest("hex");
-
-
-    return { refreshTokenHash, refreshToken };
+    return refreshToken
   }
 
+  hashRefreshToken(token: string): string {
+    return crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+  }
   // Verify access token
   verifyAccessToken(token: string): IJWTPayload {
     try {

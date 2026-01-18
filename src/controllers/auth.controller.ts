@@ -73,11 +73,13 @@ class AuthController {
 
       // 4️⃣ Create refresh token
 
-      const { refreshTokenHash, refreshToken } = jwtService.generateRefreshToken({
+      const refreshToken = jwtService.generateRefreshToken({
         userId: user._id.toString(),
         deviceId: device.deviceId,
         type: "refresh"
       });
+
+      const refreshTokenHash = jwtService.hashRefreshToken(refreshToken);
 
       // 5️⃣ Save session
       await Session.create({
@@ -112,7 +114,7 @@ class AuthController {
     }
   };
 
-  static async refreshToken(req: Request, res: Response) {
+  async refreshToken(req: Request, res: Response) {
     try {
       const { refreshToken } = req.body;
 
@@ -130,7 +132,7 @@ class AuthController {
       const { userId, deviceId } = payload;
 
       // 2️⃣ Hash provided refresh token
-      const { refreshTokenHash } = jwtService.generateRefreshToken(refreshToken);
+      const refreshTokenHash = jwtService.hashRefreshToken(refreshToken);
 
       // 3️⃣ Find active session
       const session = await Session.findOne({
@@ -151,15 +153,13 @@ class AuthController {
       }
 
       // 4️⃣ Rotate refresh token
-      const {
-        refreshToken: newRefreshToken,
-        refreshTokenHash: newRefreshTokenHash,
-      } = jwtService.generateRefreshToken({
+      const newRefreshToken = jwtService.generateRefreshToken({
         userId,
         deviceId,
         type: "refresh",
       });
 
+      const newRefreshTokenHash = jwtService.hashRefreshToken(newRefreshToken);
       // Refresh token TTL (match JWT expiry)
       const refreshTTL = 30 * 24 * 60 * 60 * 1000; // 30 days
 

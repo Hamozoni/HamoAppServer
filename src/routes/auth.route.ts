@@ -44,16 +44,8 @@ router.post(
 //   authController.resendOTP
 // );
 
-// Refresh token
-// router.post(
-//   '/refresh-token',
-//   [
-//     body('refreshToken').notEmpty().withMessage('Refresh token is required'),
-//     body('deviceId').notEmpty().withMessage('Device ID is required')
-//   ],
-//   handleValidationErrors,
-//   authController.refreshToken
-// );
+
+router.post('/refresh_token', authController.refreshToken);
 
 // Protected routes
 // router.get('/me', authMiddleware, authController.getMe);
