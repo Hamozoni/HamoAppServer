@@ -4,7 +4,7 @@ import cloudinaryService from "../services/cloudinary.service.js";
 class CloudinaryController {
 
     public getProfileUploadSignature(req: Request, res: Response) {
-        const userId = (req as any)?.user?.userId;
+        const userId = (req as any)?.userId;
         console.log(userId);
 
         const data = cloudinaryService.generateProfilePictureSignature(userId);
@@ -13,10 +13,8 @@ class CloudinaryController {
     }
 
     public getUploadSignature(req: Request, res: Response) {
-        const userId = (req as any).user.id; // from auth middleware
-        if (!userId) {
-            return res.status(401).json({ error: "Unauthorized" });
-        }
+        const userId = (req as any).userId; // from auth middleware
+
         const { type, folder, publicId } = req.body;
 
         if (!type || !folder) {

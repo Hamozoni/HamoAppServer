@@ -10,58 +10,37 @@ export interface IJWTPayload {
 }
 class JWTService {
 
+  private accessTokenSecret = process.env.JWT_ACCESS_SECRET || "access-secret";
+  private refreshTokenSecret = process.env.JWT_REFRESH_SECRET || "refresh-secret";
+  private accessTokenTTL = 15 * 60; // 15 minutes in seconds
+  private refreshTokenTTL = 30 * 24 * 60 * 60; // 30 days in seconds
+
   // Generate access token
   generateAccessToken(payload: IJWTPayload): string {
-    return jwt.sign(
-      { ...payload, type: 'access' },
-      process.env.JWT_ACCESS_SECRET!,
-      { expiresIn: '15m' }
-    );
+    return jwt.sign(payload, this.accessTokenSecret, { expiresIn: this.accessTokenTTL });
   }
 
   // Generate refresh token
   generateRefreshToken(payload: IJWTPayload): string {
 
-    const refreshToken = jwt.sign(
-      {
-        userId: payload.userId,
-        deviceId: payload.deviceId,
-        type: payload.type || "refresh"
-      },
-      process.env.JWT_REFRESH_SECRET!,
-      { expiresIn: "30d" }
+    const refreshToken = jwt.sign(payload,
+      this.refreshTokenSecret,
+      { expiresIn: this.refreshTokenTTL }
     );
     return refreshToken
   }
 
   hashRefreshToken(token: string): string {
-    return crypto
-      .createHash("sha256")
-      .update(token)
-      .digest("hex");
+    return crypto.createHash("sha256").update(token).digest("hex");
   }
   // Verify access token
   verifyAccessToken(token: string): IJWTPayload {
-    try {
-      return jwt.verify(token, process.env.JWT_ACCESS_SECRET!) as IJWTPayload;
-    } catch (error: any) {
-      if (error.name === 'TokenExpiredError') {
-        throw new Error('Access token expired');
-      }
-      throw new Error('Invalid access token');
-    }
+    return jwt.verify(token, this.accessTokenSecret) as IJWTPayload;
   };
 
   // Verify refresh token
   verifyRefreshToken(token: string): IJWTPayload {
-    try {
-      return jwt.verify(token, process.env.JWT_REFRESH_SECRET!) as IJWTPayload;
-    } catch (error: any) {
-      if (error.name === 'TokenExpiredError') {
-        throw new Error('Refresh token expired');
-      }
-      throw new Error('Invalid refresh token');
-    }
+    return jwt.verify(token, this.refreshTokenSecret) as IJWTPayload;
   }
 
   // Decode token without verification

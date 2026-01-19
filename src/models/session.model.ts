@@ -41,6 +41,14 @@ const SessionSchema = new Schema<ISession>(
         revoked: {
             type: Boolean,
             default: false
+        },
+        multi: {
+            type: Boolean,
+            default: false
+        },
+        refreshTokenVersion: {
+            type: Number,
+            default: 0
         }
     },
     {

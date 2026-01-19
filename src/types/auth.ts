@@ -43,4 +43,6 @@ export interface ISession extends Document {
     revoked: boolean,
     createdAt: Date,
     updatedAt: Date
+    refreshTokenVersion: number
+    multi: boolean
 }

@@ -5,7 +5,7 @@ import { authMiddleware } from "../middleware/auth.middleware.js";
 const router = Router();
 
 router.patch(
-    '/update_profile',
+    '/update',
     authMiddleware,
     profileController.updateProfile
 );

@@ -18,9 +18,7 @@ const UserSchema = new Schema<IUser>(
     },
 
     profilePicture: String,
-    profileCover: String,
     profilePicturePublicId: String,
-    profileCoverPublicId: String,
 
     about: {
       type: String,
