@@ -1,5 +1,6 @@
 import cloudinary from "../config/cloudinary.js";
 import dotenv from "dotenv";
+import crypto from "crypto";
 dotenv.config();
 
 export type CloudinaryResourceType = "image" | "video" | "raw" | "auto";
@@ -118,28 +119,32 @@ class CloudinaryService {
     // inside CloudinaryService class
 
     public generateProfilePictureSignature(userId: string) {
+
         const timestamp = Math.round(Date.now() / 1000);
 
+        // ✅ CRITICAL: Use full path as public_id
         const publicId = `profile_pictures/${userId}/avatar`;
 
-        const paramsToSign = {
+        // ✅ Only include params for signature (no transformation!)
+        const paramsToSign: Record<string, any> = {
             timestamp,
-            folder: `profile_pictures/${userId}`,
-            public_id: "avatar",
+            folder: `profile_pictures`,
+            public_id: publicId,
             resource_type: "image",
             overwrite: true,
-            invalidate: true, // CDN cache invalidation
-            transformation: [
-                { width: 512, height: 512, crop: "fill", gravity: "face" },
-                { quality: "auto", fetch_format: "auto" },
-            ],
-            max_file_size: 5 * 1024 * 1024, // 5MB
+            invalidate: true,
         };
 
-        const signature = cloudinary.utils.api_sign_request(
-            paramsToSign,
-            process.env.CLOUDINARY_API_SECRET!
-        );
+        // ✅ Use Cloudinary's built-in signing (it sorts automatically)
+        const signature = crypto
+            .createHmac("sha256", process.env.CLOUDINARY_API_SECRET!)
+            .update(
+                Object.keys(paramsToSign)
+                    .sort()
+                    .map((key) => `${key}=${paramsToSign[key]}`)
+                    .join("&")
+            )
+            .digest("hex");
 
         return {
             signature,
@@ -149,6 +154,9 @@ class CloudinaryService {
             uploadUrl: `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_NAME}/image/upload`,
             publicId,
             folder: `profile_pictures/${userId}`,
+            resource_type: "image",
+            overwrite: true,
+            invalidate: true,
         };
     }
 

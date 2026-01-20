@@ -4,8 +4,7 @@ import cloudinaryService from "../services/cloudinary.service.js";
 class CloudinaryController {
 
     public getProfileUploadSignature(req: Request, res: Response) {
-        const userId = (req as any)?.userId;
-        console.log(userId);
+        const userId = (req as any)?.userId;;
 
         const data = cloudinaryService.generateProfilePictureSignature(userId);
 
