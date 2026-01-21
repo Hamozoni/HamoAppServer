@@ -25,6 +25,10 @@ interface SignatureResponse {
 
 class CloudinaryService {
 
+    private cloudName = process.env.CLOUDINARY_NAME!;
+    private apiKey = process.env.CLOUDINARY_API_KEY!;
+    private apiSecret = process.env.CLOUDINARY_API_SECRET!;
+
 
     /**
      * Main entry to generate upload signature
@@ -59,14 +63,14 @@ class CloudinaryService {
 
         const signature = cloudinary.utils.api_sign_request(
             paramsToSign,
-            process.env.CLOUDINARY_API_SECRET!
+            this.apiSecret
         );
 
         return {
             signature,
             timestamp,
-            cloudName: process.env.CLOUDINARY_NAME!,
-            apiKey: process.env.CLOUDINARY_API_KEY!,
+            cloudName: this.cloudName,
+            apiKey: this.apiKey,
             folder: uploadFolder,
             resourceType,
             maxFileSize,
@@ -121,40 +125,32 @@ class CloudinaryService {
     public generateProfilePictureSignature(userId: string) {
 
         const timestamp = Math.round(Date.now() / 1000);
+        const folder = `profile_pictures/${userId}`;
+        const publicId = `${folder}/avatar`;
 
-        // ✅ CRITICAL: Use full path as public_id
-        const publicId = `profile_pictures/${userId}/avatar`;
-
-        // ✅ Only include params for signature (no transformation!)
         const paramsToSign: Record<string, any> = {
             timestamp,
-            folder: `profile_pictures`,
+            folder,
             public_id: publicId,
-            resource_type: "image",
+            // resource_type: "image",
             overwrite: true,
             invalidate: true,
         };
 
-        // ✅ Use Cloudinary's built-in signing (it sorts automatically)
-        const signature = crypto
-            .createHmac("sha256", process.env.CLOUDINARY_API_SECRET!)
-            .update(
-                Object.keys(paramsToSign)
-                    .sort()
-                    .map((key) => `${key}=${paramsToSign[key]}`)
-                    .join("&")
-            )
-            .digest("hex");
+        // Create the exact string Cloudinary expects
+        // Should match: folder=...&invalidate=true&overwrite=true&public_id=...&timestamp=...
+
+        const signature = cloudinary.utils.api_sign_request(paramsToSign, this.apiSecret);
 
         return {
             signature,
             timestamp,
-            cloudName: process.env.CLOUDINARY_NAME!,
-            apiKey: process.env.CLOUDINARY_API_KEY!,
-            uploadUrl: `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_NAME}/image/upload`,
+            cloudName: this.cloudName,
+            apiKey: this.apiKey,
+            uploadUrl: `https://api.cloudinary.com/v1_1/${this.cloudName}/image/upload`,
             publicId,
-            folder: `profile_pictures/${userId}`,
-            resource_type: "image",
+            folder,
+            // resource_type: "image",
             overwrite: true,
             invalidate: true,
         };
