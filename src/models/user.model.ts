@@ -1,6 +1,22 @@
-// src/models/User.ts
-import mongoose, { Schema } from "mongoose";
-import type { IUser } from "../types/auth.js";
+import { Schema, model, Types } from "mongoose";
+
+export interface IUser {
+  phoneNumber: string;
+  countryCode: string;
+
+  displayName: string;
+  about?: string;
+
+  profilePictureFileId?: Types.ObjectId;
+
+  lastSeen: Date;
+  isOnline: boolean;
+
+  isBlocked: boolean;
+
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 const UserSchema = new Schema<IUser>(
   {
@@ -8,32 +24,47 @@ const UserSchema = new Schema<IUser>(
       type: String,
       required: true,
       unique: true,
-      trim: true,
-      index: true
+      index: true,
+    },
+
+    countryCode: {
+      type: String,
+      required: true,
     },
 
     displayName: {
       type: String,
-      trim: true
+      required: true,
+      index: true,
     },
-
-    profilePicture: String,
-    profilePicturePublicId: String,
 
     about: {
       type: String,
-      default: "Hey there! I am using WhatsApp Clone"
+      maxlength: 139,
     },
 
-    isPhoneVerified: {
+    profilePictureFileId: {
+      type: Types.ObjectId,
+      ref: "File",
+    },
+
+    lastSeen: {
+      type: Date,
+      default: Date.now,
+    },
+
+    isOnline: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
+
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
   },
-  {
-    timestamps: true
-  }
+  { timestamps: true }
 );
 
-export default mongoose.model<IUser>("User", UserSchema);
+export default model<IUser>("User", UserSchema);
 

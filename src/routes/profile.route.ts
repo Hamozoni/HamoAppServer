@@ -10,4 +10,10 @@ router.patch(
     profileController.updateProfile
 );
 
+router.post(
+    '/update-profile-picture',
+    authMiddleware,
+    profileController.updateProfilePicture
+);
+
 export default router;
