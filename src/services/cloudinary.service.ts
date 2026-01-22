@@ -1,6 +1,5 @@
 import cloudinary from "../config/cloudinary.js";
 import dotenv from "dotenv";
-import crypto from "crypto";
 dotenv.config();
 
 export type CloudinaryResourceType = "image" | "video" | "raw" | "auto";
@@ -123,7 +122,6 @@ class CloudinaryService {
     // inside CloudinaryService class
 
     public generateProfilePictureSignature(userId: string) {
-
         const timestamp = Math.round(Date.now() / 1000);
         const folder = `profile_pictures/${userId}`;
         const publicId = `${folder}/avatar`;
@@ -132,29 +130,54 @@ class CloudinaryService {
             timestamp,
             folder,
             public_id: publicId,
-            // resource_type: "image",
             overwrite: true,
             invalidate: true,
         };
-
-        // Create the exact string Cloudinary expects
-        // Should match: folder=...&invalidate=true&overwrite=true&public_id=...&timestamp=...
 
         const signature = cloudinary.utils.api_sign_request(paramsToSign, this.apiSecret);
 
         return {
-            signature,
             timestamp,
-            cloudName: this.cloudName,
-            apiKey: this.apiKey,
-            uploadUrl: `https://api.cloudinary.com/v1_1/${this.cloudName}/image/upload`,
-            publicId,
             folder,
-            // resource_type: "image",
             overwrite: true,
             invalidate: true,
+            cloudName: this.cloudName,
+            publicId,
+            signature,
+            apiKey: this.apiKey,
+            uploadUrl: `https://api.cloudinary.com/v1_1/${this.cloudName}/image/upload`
         };
     }
+    // public generateProfilePictureSignature(userId: string) {
+
+
+    //     const timestamp = Math.round(Date.now() / 1000);
+    //     const folder = `profile_pictures/${userId}`;
+    //     const publicId = `${folder}/avatar`;
+
+    //     const paramsToSign: Record<string, any> = {
+    //         timestamp,
+    //         folder,
+    //         public_id: publicId,
+    //         overwrite: true,
+    //         invalidate: true,
+    //     };
+
+
+    //     const signature = cloudinary.utils.api_sign_request(paramsToSign, this.apiSecret);
+
+    //     return {
+    //         timestamp,
+    //         folder,
+    //         overwrite: true,
+    //         invalidate: true,
+    //         cloudName: this.cloudName,
+    //         publicId,
+    //         signature,
+    //         apiKey: this.apiKey,
+    //         uploadUrl: `https://api.cloudinary.com/v1_1/${this.cloudName}/image/upload`,
+    //     };
+    // }
 
 
     /**
