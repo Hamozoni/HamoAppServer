@@ -28,7 +28,7 @@ const UserSchema = new Schema<IUser>(
       maxlength: 139,
     },
 
-    profilePicture: {
+    profilePictureFileId: {
       type: Types.ObjectId,
       ref: "File",
     },

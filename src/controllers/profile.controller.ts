@@ -46,7 +46,7 @@ class ProfileController {
             const userId: string | undefined = (req as any)?.userId;
             if (!userId)
                 return res.status(400).json({ error: 'Missing user ID' });
-            const user: IUser | null = await User.findById(userId).populate("profilePicture");
+            const user: IUser | null = await User.findById(userId).populate("profilePictureFileId");
             if (!user)
                 return res.status(404).json({ error: 'User not found' });
             return res.status(200).json(user);

@@ -9,7 +9,7 @@ export interface IUser extends Document {
     displayName: string;
     about?: string;
 
-    profilePicture?: mongoose.Types.ObjectId;
+    profilePictureFileId?: mongoose.Types.ObjectId;
 
     lastSeen: Date;
     isOnline: boolean;
