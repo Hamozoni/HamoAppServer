@@ -1,22 +1,6 @@
 import { Schema, model, Types } from "mongoose";
 
-export interface IUser {
-  phoneNumber: string;
-  countryCode: string;
-
-  displayName: string;
-  about?: string;
-
-  profilePictureFileId?: Types.ObjectId;
-
-  lastSeen: Date;
-  isOnline: boolean;
-
-  isBlocked: boolean;
-
-  createdAt: Date;
-  updatedAt: Date;
-}
+import type { IUser } from "../types/auth.js";
 
 const UserSchema = new Schema<IUser>(
   {
@@ -30,6 +14,7 @@ const UserSchema = new Schema<IUser>(
     countryCode: {
       type: String,
       required: true,
+      default: "+966",
     },
 
     displayName: {
@@ -43,7 +28,7 @@ const UserSchema = new Schema<IUser>(
       maxlength: 139,
     },
 
-    profilePictureFileId: {
+    profilePicture: {
       type: Types.ObjectId,
       ref: "File",
     },

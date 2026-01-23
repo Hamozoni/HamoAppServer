@@ -9,9 +9,11 @@ class ProfileController {
         try {
             const { displayName, about } = req.body;
 
-            const userId: string | undefined = (req as any)?.user?.userId;
+            console.log(req.body);
+            const userId: string | undefined = (req as any)?.userId;
 
             const user: IUser | null = await User.findById(userId);
+
             if (!user)
                 return res.status(404).json({ error: 'User not found' });
             user.displayName = displayName || user?.displayName;
@@ -35,6 +37,21 @@ class ProfileController {
             return res.status(200).json(fileData);
         } catch (error) {
             console.error('❌ Update profile picture error:', error);
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+    }
+
+    async getProfile(req: Request, res: Response): Promise<Response> {
+        try {
+            const userId: string | undefined = (req as any)?.userId;
+            if (!userId)
+                return res.status(400).json({ error: 'Missing user ID' });
+            const user: IUser | null = await User.findById(userId).populate("profilePicture");
+            if (!user)
+                return res.status(404).json({ error: 'User not found' });
+            return res.status(200).json(user);
+        } catch (error) {
+            console.error('❌ Get profile error:', error);
             return res.status(500).json({ error: 'Internal server error' });
         }
     }

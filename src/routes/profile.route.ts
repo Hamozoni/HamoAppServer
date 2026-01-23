@@ -4,10 +4,16 @@ import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
-router.patch(
+router.post(
     '/update',
     authMiddleware,
     profileController.updateProfile
+);
+
+router.get(
+    '/',
+    authMiddleware,
+    profileController.getProfile
 );
 
 router.post(

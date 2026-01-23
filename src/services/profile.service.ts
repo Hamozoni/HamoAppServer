@@ -24,11 +24,17 @@ class ProfileService {
                 format: cloudinaryData.format,
                 mimeType: cloudinaryData.resource_type + "/" + cloudinaryData.format,
             },
+            usedBy: [
+                {
+                    entityType: "profile",
+                    entityId: userId,
+                },
+            ],
         });
 
         await userModel.updateOne(
             { _id: userId },
-            { profilePictureFileId: file._id }
+            { profilePicture: file._id }
         );
 
         return file;

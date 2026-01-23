@@ -2,16 +2,23 @@ import mongoose, { Document } from "mongoose"
 
 export interface IUser extends Document {
     _id: mongoose.Types.ObjectId,
-    phoneNumber: string,
-    displayName: string,
-    profilePicture: String,
-    profileCover?: String,
-    profilePicturePublicId?: String,
-    profileCoverPublicId?: String,
-    about: string,
-    isPhoneVerified: boolean,
-    createdAt: Date,
-    updatedAt: Date
+
+    phoneNumber: string;
+    countryCode: string;
+
+    displayName: string;
+    about?: string;
+
+    profilePicture?: mongoose.Types.ObjectId;
+
+    lastSeen: Date;
+    isOnline: boolean;
+
+    isBlocked: boolean;
+
+    createdAt: Date;
+    updatedAt: Date;
+
 
 }
 
