@@ -4,4 +4,6 @@ import contactsController from "../controllers/contacts.cotroller.js";
 
 const router = Router();
 
-router.get("/sync", authMiddleware, contactsController.getContacts);
+router.post("/sync", authMiddleware, contactsController.getContacts);
+
+export default router;
