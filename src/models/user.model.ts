@@ -14,7 +14,11 @@ const UserSchema = new Schema<IUser>(
     countryCode: {
       type: String,
       required: true,
-      default: "+966",
+    },
+
+    countryISO: {
+      type: String,
+      required: true,
     },
 
     displayName: {

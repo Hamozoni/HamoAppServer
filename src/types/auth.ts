@@ -6,6 +6,8 @@ export interface IUser extends Document {
     phoneNumber: string;
     countryCode: string;
 
+    countryISO: string;
+
     displayName: string;
     about?: string;
 
