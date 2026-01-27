@@ -2,18 +2,37 @@ import type { Request, Response } from "express";
 import type { IUser } from "../types/auth.js";
 import User from "../models/user.model.js";
 
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 class ContactsController {
+
+    private normalizePhone(raw: string, defaultCountryISO: string): string | null {
+
+        const phone = parsePhoneNumberFromString(raw, defaultCountryISO as any);
+
+        if (!phone || !phone.isValid()) return null;
+
+        return phone.number; // E.164 → +249912345678
+    };
+
     async getContacts(req: Request, res: Response): Promise<Response> {
         try {
             const userId: string | undefined = (req as any)?.userId;
+
+            const { countryISO } = (req as any)?.user
             if (!userId)
                 return res.status(400).json({ error: 'Missing user ID' });
 
-            const phoneNumbers: string | undefined = (req as any)?.body;
+            const phoneNumbers: string[] | undefined = (req as any)?.body;
+
+
             if (!phoneNumbers)
                 return res.status(400).json({ error: 'Missing phone number' });
-            const contacts: IUser[] | null = await User.find({ phoneNumber: { $in: phoneNumbers } })
+
+            const normalized = phoneNumbers.map(n => this.normalizePhone(n, countryISO))
+                .filter(Boolean);
+
+            const contacts: IUser[] | null = await User.find({ phoneNumber: { $in: normalized } })
                 .populate("_id displayName profilePictureFileId about phoneNumber");
             if (!contacts)
                 return res.status(404).json({ error: 'Contacts not found' });
