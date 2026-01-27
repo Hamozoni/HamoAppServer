@@ -4,16 +4,17 @@ import User from "../models/user.model.js";
 
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
+const normalizePhone = (raw: string, defaultCountryISO: string): string | null => {
+
+    const phone = parsePhoneNumberFromString(raw, defaultCountryISO as any);
+
+    if (!phone || !phone.isValid()) return null;
+
+    return phone.number; // E.164 → +249912345678
+
+};
 class ContactsController {
 
-    private normalizePhone(raw: string, defaultCountryISO: string): string | null {
-
-        const phone = parsePhoneNumberFromString(raw, defaultCountryISO as any);
-
-        if (!phone || !phone.isValid()) return null;
-
-        return phone.number; // E.164 → +249912345678
-    };
 
     async getContacts(req: Request, res: Response): Promise<Response> {
         try {
@@ -23,17 +24,18 @@ class ContactsController {
             if (!userId)
                 return res.status(400).json({ error: 'Missing user ID' });
 
-            const phoneNumbers: string[] | undefined = (req as any)?.body;
-
+            const phoneNumbers: string[] | undefined = (req as any)?.body?.phoneNumbers;
 
             if (!phoneNumbers)
                 return res.status(400).json({ error: 'Missing phone number' });
 
-            const normalized = phoneNumbers.map(n => this.normalizePhone(n, countryISO))
+            const normalized = phoneNumbers.map(n => normalizePhone(n, "SA"))
                 .filter(Boolean);
 
             const contacts: IUser[] | null = await User.find({ phoneNumber: { $in: normalized } })
-                .populate("_id displayName profilePictureFileId about phoneNumber");
+                .select("_id displayName about phoneNumber").populate("profilePicture", "secureUrl")
+
+            console.log(contacts)
             if (!contacts)
                 return res.status(404).json({ error: 'Contacts not found' });
             return res.status(200).json(contacts);

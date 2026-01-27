@@ -11,7 +11,7 @@ export interface IUser extends Document {
     displayName: string;
     about?: string;
 
-    profilePictureFileId?: mongoose.Types.ObjectId;
+    profilePicture?: mongoose.Types.ObjectId;
 
     lastSeen: Date;
     isOnline: boolean;
