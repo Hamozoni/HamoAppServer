@@ -106,6 +106,9 @@ const FileSchema = new Schema(
             default: false,
             index: true,
         },
+        thumbnailUrl: {
+            type: String,
+        },
 
         expiresAt: {
             type: Date,
