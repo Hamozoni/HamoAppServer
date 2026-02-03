@@ -20,16 +20,19 @@ class ContactsController {
         try {
             const userId: string | undefined = (req as any)?.userId;
 
-            const { countryISO } = (req as any)?.user
             if (!userId)
                 return res.status(400).json({ error: 'Missing user ID' });
 
             const phoneNumbers: string[] | undefined = (req as any)?.body?.phoneNumbers;
 
+
+            const countryISO = (req as any)?.body?.countryISO;
+            console.log({ countryISO, phoneNumbers })
+
             if (!phoneNumbers)
                 return res.status(400).json({ error: 'Missing phone number' });
 
-            const normalized = phoneNumbers.map(n => normalizePhone(n, "SA"))
+            const normalized = phoneNumbers.map(n => n && normalizePhone(n, countryISO))
                 .filter(Boolean);
 
             const contacts: IUser[] | null = await User.find({ phoneNumber: { $in: normalized } })
