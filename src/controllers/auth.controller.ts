@@ -38,7 +38,7 @@ class AuthController {
     try {
       const { phoneNumber, otp, device, countryISO, countryCode } = req.body;
 
-      console.log({ phoneNumber, otp, device, countryISO, countryCode })
+      console.log({ phoneNumber, otp, device, countryISO, countryCode, ip: req.ip })
       console.log(`📱 Verifying OTP for ${{ phoneNumber, otp, device }}`);
       if (!phoneNumber || !otp || !device?.deviceId) {
         res.status(400).json({ message: "Invalid request" });
@@ -55,12 +55,13 @@ class AuthController {
 
       // 2️⃣ Create or fetch user
       let user = await User.findOne({ phoneNumber });
-
+      console.log({ user })
       if (!user) {
         user = await User.create({
           phoneNumber,
           countryISO,
           countryCode,
+          displayName: device.deviceName,
           isPhoneVerified: true
         });
       }
