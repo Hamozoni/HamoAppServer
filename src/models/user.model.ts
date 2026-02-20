@@ -23,7 +23,7 @@ const UserSchema = new Schema<IUser>(
 
     displayName: {
       type: String,
-      required: true,
+      required: false,
       index: true,
     },
 

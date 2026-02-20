@@ -36,7 +36,9 @@ class AuthController {
 
   async verifyOTP(req: Request, res: Response): Promise<void> {
     try {
-      const { phoneNumber, otp, device } = req.body;
+      const { phoneNumber, otp, device, countryISO, countryCode } = req.body;
+
+      console.log({ phoneNumber, otp, device, countryISO, countryCode })
       console.log(`📱 Verifying OTP for ${{ phoneNumber, otp, device }}`);
       if (!phoneNumber || !otp || !device?.deviceId) {
         res.status(400).json({ message: "Invalid request" });
@@ -57,6 +59,8 @@ class AuthController {
       if (!user) {
         user = await User.create({
           phoneNumber,
+          countryISO,
+          countryCode,
           isPhoneVerified: true
         });
       }

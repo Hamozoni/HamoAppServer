@@ -13,8 +13,8 @@ const normalizePhone = (raw: string, defaultCountryISO: string): string | null =
     return phone.number; // E.164 → +249912345678
 
 };
-class ContactsController {
 
+class ContactsController {
 
     async getContacts(req: Request, res: Response): Promise<Response> {
         try {
@@ -27,7 +27,6 @@ class ContactsController {
 
 
             const countryISO = (req as any)?.body?.countryISO;
-            console.log({ countryISO, phoneNumbers })
 
             if (!phoneNumbers)
                 return res.status(400).json({ error: 'Missing phone number' });
@@ -36,7 +35,7 @@ class ContactsController {
                 .filter(Boolean);
 
             const contacts: IUser[] | null = await User.find({ phoneNumber: { $in: normalized } })
-                .select("_id displayName about phoneNumber").populate("profilePicture", "secureUrl")
+                .select("_id displayName about phoneNumber countryISO countryCode").populate("profilePicture", "secureUrl")
 
             console.log(contacts)
             if (!contacts)
