@@ -12,7 +12,7 @@ class ProfileController {
             console.log(req.body);
             const userId: string | undefined = (req as any)?.userId;
 
-            const user: IUser | null = await User.findById(userId);
+            const user: IUser | null = await User.findById(userId).select("_id displayName about phoneNumber").populate("profilePicture", "secureUrl");
 
             if (!user)
                 return res.status(404).json({ error: 'User not found' });
@@ -29,11 +29,12 @@ class ProfileController {
     async updateProfilePicture(req: Request, res: Response): Promise<Response> {
         try {
             const cloudinaryData = req.body;
-            console.log(cloudinaryData);
             const userId: string | undefined = (req as any)?.userId;
+
             if (!cloudinaryData || !userId)
                 return res.status(400).json({ error: 'Missing file or user ID' });
             const fileData = await profileService.updateProfilePicture(userId, cloudinaryData);
+
             return res.status(200).json(fileData);
         } catch (error) {
             console.error('❌ Update profile picture error:', error);
