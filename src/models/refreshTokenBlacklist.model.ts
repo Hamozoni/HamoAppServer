@@ -16,7 +16,7 @@ const tokenBlacklistSchema = new mongoose.Schema(
         expiresAt: {
             type: Date,
             required: true,
-            expires: 86400, // Auto-delete after token expiry
+            expires: 0, // Auto-delete after token expiry
         },
     },
     { timestamps: true }
