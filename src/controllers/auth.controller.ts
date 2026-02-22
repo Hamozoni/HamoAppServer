@@ -38,84 +38,219 @@ class AuthController {
     try {
       const { phoneNumber, otp, device, countryISO, countryCode } = req.body;
 
-      console.log({ phoneNumber, otp, device, countryISO, countryCode, ip: req.ip })
-      console.log(`📱 Verifying OTP for ${{ phoneNumber, otp, device }}`);
       if (!phoneNumber || !otp || !device?.deviceId) {
         res.status(400).json({ message: "Invalid request" });
         return;
       }
 
-      // 1️⃣ Verify OTP with Twilio
+      // 1️⃣ Verify OTP
       // const verification = await TwilioService.verifyCode(phoneNumber, otp);
-
       // if (!verification.success) {
-      //   res.status(401).json({ message: "Invalid OTP" });
-      //   return;
+      //     res.status(401).json({ message: "Invalid OTP" });
+      //     return;
       // }
 
       // 2️⃣ Create or fetch user
-      let user = await User.findOne({ phoneNumber }).select("_id displayName about phoneNumber").populate("profilePicture", "secureUrl");
-      console.log({ user })
+      let user = await User.findOne({ phoneNumber })
+        .select("_id displayName about phoneNumber")
+        .populate("profilePicture", "secureUrl");
+
       if (!user) {
+        // ── Brand new user ──────────────────────
         user = await User.create({
           phoneNumber,
           countryISO,
           countryCode,
           displayName: device.deviceName,
-          isPhoneVerified: true
+          isPhoneVerified: true,
         });
-      }
 
-      // 3️⃣ Register / update device
-      await Device.findOneAndUpdate(
-        { userId: user._id, deviceId: device.deviceId },
-        {
+        await Device.create({
           userId: user._id,
           isPrimary: true,
-          ...device
-        },
-        { upsert: true }
+          ...device,
+        });
+
+      } else {
+        // ── Existing user — handle primary device ─
+        const existingPrimary = await Device.findOne({
+          userId: user._id,
+          isPrimary: true,
+        });
+
+        const isSameDevice = existingPrimary?.deviceId === device.deviceId;
+
+        if (existingPrimary && !isSameDevice) {
+          // 🔴 New device — revoke all sessions for old primary device
+          await Session.updateMany(
+            {
+              userId: user._id,
+              deviceId: existingPrimary.deviceId,
+              revoked: false,
+            },
+            { revoked: true }
+          );
+
+          // Blacklist all active refresh tokens for old device
+          const oldSessions = await Session.find({
+            userId: user._id,
+            deviceId: existingPrimary.deviceId,
+          });
+
+          await Promise.allSettled(
+            oldSessions.map(s =>
+              refreshTokenBlacklistModel.create({
+                tokenHash: s.refreshTokenHash,
+                userId: user!._id.toString(),
+                expiresAt: s.expiresAt,
+              }).catch(err => {
+                // Ignore duplicate key errors
+                if (err.code !== 11000) throw err;
+              })
+            )
+          );
+
+          // Demote old primary → promote new device
+          await Device.findByIdAndUpdate(existingPrimary._id, {
+            isPrimary: false,
+          });
+
+          await Device.findOneAndUpdate(
+            { deviceId: device.deviceId },
+            { userId: user._id, isPrimary: true, ...device },
+            { upsert: true, new: true }
+          );
+
+        } else if (!existingPrimary) {
+          // No primary at all — set this device as primary
+          await Device.findOneAndUpdate(
+            { deviceId: device.deviceId },
+            { userId: user._id, isPrimary: true, ...device },
+            { upsert: true, new: true }
+          );
+        }
+        // else: same device logging in again — no device changes
+      }
+
+      // 3️⃣ Revoke previous sessions for THIS device
+      await Session.updateMany(
+        { userId: user._id, deviceId: device.deviceId, revoked: false },
+        { revoked: true }
       );
 
-      // 4️⃣ Create refresh token
-
+      // 4️⃣ Generate refresh token
       const refreshToken = jwtService.generateRefreshToken({
         userId: user._id.toString(),
         deviceId: device.deviceId,
-        type: "refresh"
+        type: "refresh",
       });
 
       const refreshTokenHash = jwtService.hashRefreshToken(refreshToken);
 
-      // 5️⃣ Save session
+      // 5️⃣ Create new session — matching your schema exactly
       await Session.create({
         userId: user._id,
         deviceId: device.deviceId,
         refreshTokenHash,
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         ip: req.ip,
-        userAgent: req.headers["user-agent"]
+        userAgent: req.headers["user-agent"],
+        revoked: false,
+        refreshTokenVersion: 0,
+        lastUsedAt: new Date(),
       });
 
-      // 6️⃣ Create access token
+      // 6️⃣ Generate access token
       const accessToken = jwtService.generateAccessToken({
         userId: user._id.toString(),
         deviceId: device.deviceId,
-        type: "access"
+        type: "access",
       });
 
-      res.json({
-        user,
-        accessToken,
-        refreshToken
-      });
-      return;
+      res.json({ user, accessToken, refreshToken });
+
+    } catch (error: any) {
+      console.error("verifyOTP error:", error);
+      res.status(500).json({ error: "Failed to verify OTP" });
     }
-    catch (error: any) {
-      console.error('Resend OTP error:', error);
-      res.status(500).json({ error: 'Failed to resend verification code' });
-    }
-  };
+  }
+  // async verifyOTP(req: Request, res: Response): Promise<void> {
+  //   try {
+  //     const { phoneNumber, otp, device, countryISO, countryCode } = req.body;
+
+  //     if (!phoneNumber || !otp || !device?.deviceId) {
+  //       res.status(400).json({ message: "Invalid request" });
+  //       return;
+  //     }
+
+  //     // 1️⃣ Verify OTP with Twilio
+  //     // const verification = await TwilioService.verifyCode(phoneNumber, otp);
+
+  //     // if (!verification.success) {
+  //     //   res.status(401).json({ message: "Invalid OTP" });
+  //     //   return;
+  //     // }
+
+  //     // 2️⃣ Create or fetch user
+  //     let user = await User.findOne({ phoneNumber }).select("_id displayName about phoneNumber").populate("profilePicture", "secureUrl");
+  //     let userDevice = await Device.findById(device.deviceId)
+
+  //     if (!user) {
+  //       user = await User.create({
+  //         phoneNumber,
+  //         countryISO,
+  //         countryCode,
+  //         displayName: device.deviceName,
+  //         isPhoneVerified: true
+  //       });
+
+  //       userDevice = await Device.create({
+  //         userId: user._id,
+  //         isPrimary: true,
+  //         ...device
+  //       })
+  //     }
+
+
+  //     // 4️⃣ Create refresh token
+
+  //     const refreshToken = jwtService.generateRefreshToken({
+  //       userId: user._id.toString(),
+  //       deviceId: device.deviceId,
+  //       type: "refresh"
+  //     });
+
+  //     const refreshTokenHash = jwtService.hashRefreshToken(refreshToken);
+
+  //     // 5️⃣ Save session
+  //     await Session.create({
+  //       userId: user._id,
+  //       deviceId: device.deviceId,
+  //       refreshTokenHash,
+  //       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+  //       ip: req.ip,
+  //       userAgent: req.headers["user-agent"]
+  //     });
+
+  //     // 6️⃣ Create access token
+  //     const accessToken = jwtService.generateAccessToken({
+  //       userId: user._id.toString(),
+  //       deviceId: device.deviceId,
+  //       type: "access"
+  //     });
+
+  //     res.json({
+  //       user,
+  //       accessToken,
+  //       refreshToken
+  //     });
+  //     return;
+  //   }
+  //   catch (error: any) {
+  //     console.error('Resend OTP error:', error);
+  //     res.status(500).json({ error: 'Failed to resend verification code' });
+  //   }
+  // };
 
   async refreshToken(req: Request, res: Response): Promise<any> {
     try {
@@ -258,180 +393,6 @@ class AuthController {
         message: "Token refresh failed",
       });
     }
-
-
-    // async refreshToken(req: Request, res: Response) {
-    //   try {
-    //     const { refreshToken } = req.body;
-
-    //     if (!refreshToken) {
-    //       return res.status(401).json({ message: "Refresh token required" });
-    //     }
-
-    //     // 1️⃣ Verify refresh token (JWT + expiry)
-    //     const payload = jwtService.verifyRefreshToken(refreshToken);
-
-    //     if (payload.type !== "refresh") {
-    //       return res.status(401).json({ message: "Invalid token type" });
-    //     }
-
-    //     const { userId, deviceId } = payload;
-
-    //     // 2️⃣ Hash provided refresh token
-    //     const refreshTokenHash = jwtService.hashRefreshToken(refreshToken);
-
-    //     // 3️⃣ Find active session
-    //     const session = await Session.findOne({
-    //       userId,
-    //       deviceId,
-    //       revoked: false,
-    //       expiresAt: { $gt: new Date() },
-    //     });
-
-    //     if (!session || session.refreshTokenHash !== refreshTokenHash) {
-    //       // Refresh token reuse or stolen token
-    //       if (session) {
-    //         session.revoked = true;
-    //         await session.save();
-    //       }
-
-    //       return res.status(401).json({ message: "Invalid refresh session" });
-    //     }
-
-    //     // 4️⃣ Rotate refresh token
-    //     const newRefreshToken = jwtService.generateRefreshToken({
-    //       userId,
-    //       deviceId,
-    //       type: "refresh",
-    //     });
-
-    //     const newRefreshTokenHash = jwtService.hashRefreshToken(newRefreshToken);
-    //     // Refresh token TTL (match JWT expiry)
-    //     const refreshTTL = 30 * 24 * 60 * 60 * 1000; // 30 days
-
-    //     session.refreshTokenHash = newRefreshTokenHash;
-    //     session.expiresAt = new Date(Date.now() + refreshTTL);
-    //     session.lastUsedAt = new Date();
-    //     await session.save();
-
-    //     // 5️⃣ Issue new access token
-    //     const accessToken = jwtService.generateAccessToken({
-    //       userId,
-    //       deviceId,
-    //       type: "access",
-    //     });
-
-    //     return res.json({
-    //       accessToken,
-    //       refreshToken: newRefreshToken,
-    //       expiresIn: 15 * 60, // seconds
-    //     });
-    //   } catch (error: any) {
-    //     console.error("Refresh error:", error.message);
-
-    //     return res.status(401).json({
-    //       message: error.message || "Refresh failed",
-    //     });
-    //   }
-    // }
-
-
-    // async logout(req: Request, res: Response): Promise<void> {
-    //   try {
-    //     const { deviceId, refreshToken } = req.body;
-    //     const user = req.user!;
-
-    //     // Remove refresh token
-    //     if (refreshToken) {
-    //       user.refreshTokens = user.refreshTokens.filter(
-    //         rt => rt.token !== refreshToken
-    //       );
-    //     } else if (deviceId) {
-    //       user.refreshTokens = user.refreshTokens.filter(
-    //         rt => rt.deviceId !== deviceId
-    //       );
-    //     }
-
-    //     // Remove device
-    //     if (deviceId) {
-    //       user.devices = user.devices.filter(d => d.deviceId !== deviceId);
-    //     }
-
-    //     await user.save();
-
-    //     res.json({ success: true, message: 'Logged out successfully' });
-    //   } catch (error: any) {
-    //     console.error('Logout error:', error);
-    //     res.status(500).json({ error: 'Logout failed' });
-    //   }
-    // };
-
-    // async logoutAll(req: Request, res: Response): Promise<void> {
-    //   try {
-    //     const user = req.user!;
-
-    //     user.refreshTokens = [];
-    //     user.devices = [];
-
-    //     await user.save();
-
-    //     res.json({ success: true, message: 'Logged out from all devices' });
-    //   } catch (error: any) {
-    //     console.error('Logout all error:', error);
-    //     res.status(500).json({ error: 'Logout failed' });
-    //   }
-    // };
-
-    // async getMe(req: Request, res: Response): Promise<void> {
-    //   try {
-    //     const user = req.user!;
-
-    //     res.json({
-    //       id: user._id,
-    //       phoneNumber: user.phoneNumber,
-    //       displayName: user.displayName,
-    //       profilePicture: user.profilePicture,
-    //       about: user.about,
-    //       isPhoneVerified: user.isPhoneVerified,
-    //       devices: user.devices.map(d => ({
-    //         deviceId: d.deviceId,
-    //         platform: d.platform,
-    //         deviceName: d.deviceName,
-    //         lastActive: d.lastActive
-    //       })),
-    //       createdAt: user.createdAt,
-    //       lastSeen: user.lastSeen
-    //     });
-    //   } catch (error: any) {
-    //     res.status(500).json({ error: 'Failed to get user' });
-    //   }
-    // };
-
-    // async updateProfile(req: Request, res: Response): Promise<void> {
-    //   try {
-    //     const user = req.user!;
-    //     const { displayName, about, profilePicture } = req.body;
-
-    //     if (displayName !== undefined) user.displayName = displayName;
-    //     if (about !== undefined) user.about = about;
-    //     if (profilePicture !== undefined) user.profilePicture = profilePicture;
-
-    //     await user.save();
-
-    //     res.json({
-    //       success: true,
-    //       user: {
-    //         id: user._id,
-    //         phoneNumber: user.phoneNumber,
-    //         displayName: user.displayName,
-    //         profilePicture: user.profilePicture,
-    //         about: user.about
-    //       }
-    //     });
-    //   } catch (error: any) {
-    //     res.status(500).json({ error: 'Failed to update profile' });
-    //   }
-    // }
   }
 
 }
