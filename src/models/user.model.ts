@@ -29,6 +29,7 @@ const UserSchema = new Schema<IUser>(
 
     about: {
       type: String,
+      default: "Hi there I'm using SudaChat.",
       maxlength: 139,
     },
 

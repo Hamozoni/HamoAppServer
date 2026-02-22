@@ -54,7 +54,7 @@ class AuthController {
       // }
 
       // 2️⃣ Create or fetch user
-      let user = await User.findOne({ phoneNumber });
+      let user = await User.findOne({ phoneNumber }).select("_id displayName about phoneNumber").populate("profilePicture", "secureUrl");
       console.log({ user })
       if (!user) {
         user = await User.create({
@@ -105,10 +105,7 @@ class AuthController {
       });
 
       res.json({
-        user: {
-          id: user._id,
-          phoneNumber: user.phoneNumber
-        },
+        user,
         accessToken,
         refreshToken
       });
