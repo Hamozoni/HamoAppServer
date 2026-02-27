@@ -75,11 +75,23 @@ class SocketService {
             const { userId, deviceId } = socket as AuthenticationSocket;
 
             console.log(`✅ Connected: userId=${userId} socketId=${socket.id}`);
+
+            this.addUser(userId, socket.id);
+
+            // Join personal room — used to send events to a specific user
+            socket.join(`user:${userId}`);
+            // Emit online status to contacts
+            this.emitOnlineStatus(userId, true)
         })
     };
 
-    private addUser() {
+    private addUser(userId: string, socketId: string) {
 
+        if (!this.userSockets.has(userId)) {
+            this.userSockets.set(userId, new Set())
+        };
+
+        this.userSockets.get(userId)!.add(socketId)
     };
 
     private removeUser() {
@@ -96,6 +108,21 @@ class SocketService {
 
     private emitToChat() {
 
+    };
+
+    private emitToChatExcept() {
+
+    };
+
+    private emitOnlineStatus(userId: string, isOnline: boolean) {
+        // Broadcast to everyone — contacts will filter on client side
+
+        this.io.emit(SOCKET_EVENTS.USER_ONLINE_STATUS, {
+            userId,
+            isOnline,
+            lasSeen: isOnline ? null : new Date()
+
+        })
     }
 
 
