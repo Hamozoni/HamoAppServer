@@ -148,42 +148,8 @@ class CloudinaryService {
             uploadUrl: `https://api.cloudinary.com/v1_1/${this.cloudName}/image/upload`
         };
     }
-    // public generateProfilePictureSignature(userId: string) {
 
 
-    //     const timestamp = Math.round(Date.now() / 1000);
-    //     const folder = `profile_pictures/${userId}`;
-    //     const publicId = `${folder}/avatar`;
-
-    //     const paramsToSign: Record<string, any> = {
-    //         timestamp,
-    //         folder,
-    //         public_id: publicId,
-    //         overwrite: true,
-    //         invalidate: true,
-    //     };
-
-
-    //     const signature = cloudinary.utils.api_sign_request(paramsToSign, this.apiSecret);
-
-    //     return {
-    //         timestamp,
-    //         folder,
-    //         overwrite: true,
-    //         invalidate: true,
-    //         cloudName: this.cloudName,
-    //         publicId,
-    //         signature,
-    //         apiKey: this.apiKey,
-    //         uploadUrl: `https://api.cloudinary.com/v1_1/${this.cloudName}/image/upload`,
-    //     };
-    // }
-
-
-    /**
-     * Folder structure builder
-     * Example: chats/images/{userId}
-     */
     private buildFolder(
         baseFolder: string | undefined,
         typeFolder: string,
@@ -194,7 +160,58 @@ class CloudinaryService {
         }
 
         return `${typeFolder}/${userId}`;
+    };
+
+    // Add this method to your CloudinaryService class
+
+    public generateTempMediaSignature(
+        userId: string,
+        type: UploadSignatureOptions["type"]
+    ): SignatureResponse {
+        const timestamp = Math.round(Date.now() / 1000);
+        const { resourceType, maxFileSize, folderName } = this.resolveUploadConfig(type);
+
+        // ✅ temp folder — separate from permanent files
+        const folder = `sudachat/temp/${folderName}/${userId}`;
+
+        const paramsToSign: Record<string, any> = {
+            timestamp,
+            folder,
+            resource_type: resourceType,
+            max_file_size: maxFileSize,
+            // ✅ Auto delete from Cloudinary after 30 days safety net
+            invalidate: true,
+        };
+
+        const signature = cloudinary.utils.api_sign_request(
+            paramsToSign,
+            this.apiSecret
+        );
+
+        return {
+            signature,
+            timestamp,
+            cloudName: this.cloudName,
+            apiKey: this.apiKey,
+            folder,
+            resourceType,
+            maxFileSize,
+        };
     }
+
+    // Delete a file from Cloudinary by publicId
+    public async deleteFile(
+        publicId: string,
+        resourceType: CloudinaryResourceType = "image"
+    ): Promise<void> {
+        await cloudinary.uploader.destroy(publicId, {
+            resource_type: resourceType,
+            invalidate: true,
+        });
+        console.log(`🗑️ Deleted from Cloudinary: ${publicId}`);
+    }
+
+
 };
 
 export default new CloudinaryService();

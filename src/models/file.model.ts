@@ -124,3 +124,23 @@ FileSchema.index({ ownerId: 1, purpose: 1 });
 FileSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export default model("File", FileSchema);
+
+// TTL — auto delete from MongoDB X days after download
+// deleteAfter: {
+//     type: Date,
+//     default: null,
+//     index: true,
+// },
+// downloaded: {
+//     type: Boolean,
+//     default: false,
+//     index: true,
+// },
+// downloadedAt: {
+//     type: Date,
+//     default: null,
+// },
+// downloadedBy: [{
+//     userId:       { type: Types.ObjectId, ref: "User" },
+//     downloadedAt: { type: Date, default: Date.now },
+// }],
