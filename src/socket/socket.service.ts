@@ -1,4 +1,4 @@
-import { Server as HttpServer } from "http";
+import { Server as HTTPServer } from "http";
 import { Server as SocketServer, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 
@@ -11,7 +11,7 @@ interface AuthPayload {
 };
 
 
-interface AuthenticationSocket {
+interface AuthenticationSocket extends Socket {
     userId: string;
     deviceId: string;
 };
@@ -21,10 +21,9 @@ class SocketService {
 
     private io!: SocketServer;
     // Map userId → Set of socketIds (user can have multiple connections)
-
     private userSockets: Map<string, Set<string>> = new Map();
 
-    consturctor(server: HttpServer) {
+    constructor(server: HTTPServer) {
 
         this.io = new SocketServer(server, {
             cors: {
@@ -80,9 +79,51 @@ class SocketService {
             // Join personal room — used to send events to a specific user
             socket.join(`user:${userId}`);
             // Emit online status to contacts
-            this.emitOnlineStatus(userId, true)
+            this.emitOnlineStatus(userId, true);
+
+            // ── Event listeners ──────────────────────
+
+            socket.on(SOCKET_EVENTS.JOIN_CHAT, (chatId: string) => {
+                socket.join(`chat:${chatId}`)
+            });
+
+
+            socket.on(SOCKET_EVENTS.LEAVE_CHAT, (chatId: string) => {
+                socket.leave(`chat:${chatId}`);
+            });
+
+            socket.on(SOCKET_EVENTS.TYPING_START, ({ chatId }: { chatId: string }) => {
+                socket.to(chatId).emit(SOCKET_EVENTS.TYPING_START, {
+                    chatId,
+                    userId
+                })
+            });
+            socket.on(SOCKET_EVENTS.TYPING_STOP, ({ chatId }: { chatId: string }) => {
+                socket.to(`chat:${chatId}`).emit(SOCKET_EVENTS.TYPING_STOP, {
+                    chatId,
+                    userId,
+                });
+            });
+
+            // ── Disconnect ───────────────────────────
+
+            socket.on("disconnect", (reason: string) => {
+                console.log(`❌ Disconnected: userId=${userId} reason=${reason}`);
+
+                this.removeUser(userId, socket.id);
+
+                // Only emit offline if user has no more active sockets
+
+                if (!this.isUserOnline(userId)) {
+                    this.emitOnlineStatus(userId, false)
+                }
+            })
+
         })
     };
+
+    // ── User socket tracking ─────────────────────────
+
 
     private addUser(userId: string, socketId: string) {
 
@@ -93,35 +134,50 @@ class SocketService {
         this.userSockets.get(userId)!.add(socketId)
     };
 
-    private removeUser() {
+    private removeUser(userId: string, socketId: string) {
 
+        this.userSockets.get(userId)?.delete(socketId);
+
+        if (this.userSockets.get(userId)?.size === 0) {
+            this.userSockets.delete(userId)
+        }
     };
 
-    private isUserOnline() {
-
+    private isUserOnline(userId: string): boolean {
+        return (this.userSockets.get(userId)?.size ?? 0) > 0
     };
 
-    private emitToUser() {
+    // ── Emit helpers ─────────────────────────────────
 
+    // Send to a specific user (all their devices)
+    private emitToUser(userId: string, event: string, data: any) {
+        this.io.to(`user:${userId}`).emit(event, data)
     };
 
-    private emitToChat() {
+    // Send to all users in a chat room
 
+    private emitToChat(chatId: string, event: string, data: any) {
+        this.io.to(`chat:${chatId}`).emit(event, data)
     };
+    // Send to everyone in chat EXCEPT the sender
+    private emitToChatExcept(chatId: string, senderId: string, event: string, data: any) {
+        this.io.to(`user:${senderId}`)
+            .except(`chat:${chatId}`)
+            .emit(event, data);
 
-    private emitToChatExcept() {
-
+        this.io.to(`chat:${chatId}`)
+            .except(senderId)
+            .emit(event, data)
     };
 
     private emitOnlineStatus(userId: string, isOnline: boolean) {
         // Broadcast to everyone — contacts will filter on client side
-
         this.io.emit(SOCKET_EVENTS.USER_ONLINE_STATUS, {
             userId,
             isOnline,
             lasSeen: isOnline ? null : new Date()
 
-        })
+        });
     }
 
 
@@ -129,4 +185,6 @@ class SocketService {
         return this.io
     }
 
-}
+};
+
+export default SocketService

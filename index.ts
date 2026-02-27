@@ -3,22 +3,18 @@ import dotenv from "dotenv";
 import http from 'http';
 import app from "./src/app.js";
 import connect_db from "./src/config/db.js";
-
-
+import SocketService from "./src/socket/socket.service.js";
 
 dotenv.config();
 
+const PORT = process.env.PORT || 5500;
 connect_db();
-
-
 
 const server = http.createServer(app);
 
-// const socket = new SocketService(server);
+const socketService = new SocketService(server)
 
-// app.set('socket', socket);
-
-const PORT = process.env.PORT || 5500;
+app.set("SocketService", socketService);
 
 server.listen(PORT, () => {
   console.log(`server is listening to port ${PORT}`);
@@ -33,3 +29,5 @@ server.listen(PORT, () => {
     process.exit(1);
   }
 });
+
+export { socketService }
