@@ -3,7 +3,6 @@ import { Server as SocketServer, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 
 import { SOCKET_EVENTS } from "./socket.events.js";
-import { error } from "console";
 
 interface AuthPayload {
     userId: string;
@@ -20,7 +19,7 @@ interface AuthenticationSocket {
 class SocketService {
 
 
-    private io: SocketServer
+    private io!: SocketServer;
     // Map userId → Set of socketIds (user can have multiple connections)
 
     private userSockets: Map<string, Set<string>> = new Map();
