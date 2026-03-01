@@ -1,5 +1,4 @@
 import { Schema, model, Types, Document } from "mongoose";
-import type { FileType } from "./file.model.js";
 
 export type MessageType =
     | "text" | "image" | "video" | "audio"
