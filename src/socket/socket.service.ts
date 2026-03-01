@@ -143,24 +143,24 @@ class SocketService {
         }
     };
 
-    private isUserOnline(userId: string): boolean {
+    public isUserOnline(userId: string): boolean {
         return (this.userSockets.get(userId)?.size ?? 0) > 0
     };
 
     // ── Emit helpers ─────────────────────────────────
 
     // Send to a specific user (all their devices)
-    private emitToUser(userId: string, event: string, data: any) {
+    public emitToUser(userId: string, event: string, data: any) {
         this.io.to(`user:${userId}`).emit(event, data)
     };
 
     // Send to all users in a chat room
 
-    private emitToChat(chatId: string, event: string, data: any) {
+    public emitToChat(chatId: string, event: string, data: any) {
         this.io.to(`chat:${chatId}`).emit(event, data)
     };
     // Send to everyone in chat EXCEPT the sender
-    private emitToChatExcept(chatId: string, senderId: string, event: string, data: any) {
+    public emitToChatExcept(chatId: string, senderId: string, event: string, data: any) {
         this.io.to(`user:${senderId}`)
             .except(`chat:${chatId}`)
             .emit(event, data);
@@ -181,7 +181,7 @@ class SocketService {
     }
 
 
-    private getIO(): SocketServer {
+    public getIO(): SocketServer {
         return this.io
     }
 
