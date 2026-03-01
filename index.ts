@@ -11,7 +11,6 @@ const PORT = process.env.PORT || 5500;
 connect_db();
 
 const server = http.createServer(app);
-
 const socketService = new SocketService(server)
 
 app.set("SocketService", socketService);
