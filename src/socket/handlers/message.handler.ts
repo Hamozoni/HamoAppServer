@@ -10,7 +10,7 @@ interface SendMessagePayload {
     receiverId: string;     // required for direct messages
     type: "text" | "image" | "video" | "audio" | "document" | "location" | "contact" | "link";
     text?: string;
-    fileId?: string;
+    file?: string;
     location?: { latitude: number; longitude: number; name?: string };
     contact?: { displayName: string; phoneNumber: string; avatar?: string };
     link?: { url: string; title?: string; description?: string; thumbnail?: string };
@@ -77,7 +77,7 @@ export async function handleSendMessage(
             receiverId: new Types.ObjectId(payload.receiverId),
             type: payload.type,
             text: payload.text ?? null,
-            file: payload.fileId ? new Types.ObjectId(payload.fileId) : null,
+            file: payload.file ? new Types.ObjectId(payload.file) : null,
             location: payload.location ?? null,
             contact: payload.contact ?? null,
             link: payload.link ?? null,

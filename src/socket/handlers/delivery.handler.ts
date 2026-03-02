@@ -1,6 +1,5 @@
 import { Types } from "mongoose";
 import Message from "../../models/message.model.js";
-import Chat from "../../models/chat.model.js";
 import { SOCKET_EVENTS } from "../socket.events.js";
 import { socketService } from "../../../index.js";
 
