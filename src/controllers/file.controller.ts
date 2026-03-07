@@ -15,7 +15,7 @@ class FileController {
             }
 
             const signature = CloudinaryService.generateTempMediaSignature(
-                req!.user?._id,
+                (req as any).user._id,
                 type
             );
 
@@ -31,7 +31,7 @@ class FileController {
             const { cloudinaryData, type, messageId, chatId } = req.body;
 
             const file = await FileService.saveChatMedia(
-                req.user._id,
+                (req as any).user._id,
                 cloudinaryData,
                 { type, messageId, chatId }
             );
@@ -51,7 +51,7 @@ class FileController {
     // 3️⃣ Mark as downloaded by receiver
     async downloaded(req: Request, res: Response) {
         try {
-            await FileService.markDownloaded(req.params.fileId, req.user.user_id);
+            await FileService.markDownloaded((req as any).params.fileId, (req as any).user._id);
             return res.json({ success: true });
         } catch (err) {
             return res.status(500).json({ message: "Failed to mark downloaded" });
