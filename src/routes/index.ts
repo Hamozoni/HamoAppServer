@@ -1,16 +1,17 @@
 import { Router } from 'express';
-import authRoute from "./auth.route.js";
-import cloudinaryRoute from "./cloudinary.route.js";
-import profileRoute from "./profile.route.js";
-import contactRoute from "./contact.route.js";
-import fileRoute from "./file.route.js";
+import authRoutes from "./auth.route.js";
+import cloudinaryRoutes from "./cloudinary.route.js";
+import profileRoutes from "./profile.route.js";
+import contactRoutes from "./contact.route.js";
+import fileRoutes from "./file.route.js";
+import messageRoutes from "./message.route.js"
 
 const router = Router();
 
-router.use('/auth', authRoute);
-router.use('/cloudinary', cloudinaryRoute);
-router.use('/profile', profileRoute);
-router.use('/contacts', contactRoute);
-router.use('/file', fileRoute);
-
+router.use('/auth', authRoutes);
+router.use('/cloudinary', cloudinaryRoutes);
+router.use('/profile', profileRoutes);
+router.use('/contacts', contactRoutes);
+router.use('/file', fileRoutes);
+router.use("/messages", messageRoutes);
 export default router;
