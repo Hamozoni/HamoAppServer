@@ -1,52 +1,62 @@
-import { Socket } from "socket.io";
 import { Types } from "mongoose";
 import Message from "../../models/message.model.js";
 import Chat from "../../models/chat.model.js";
+import User from "../../models/user.model.js";
 import { SOCKET_EVENTS } from "../socket.events.js";
 import { socketService } from "../../../index.js";
 
 interface SendMessagePayload {
-    chatId?: string;        // null if first message (new chat)
-    receiverId: string;     // required for direct messages
-    type: "text" | "image" | "video" | "audio" | "document" | "location" | "contact" | "link";
+    chatId?: string;
+    receiverId?: string;      // MongoDB _id
+    phoneNumber?: string;      // fallback if no receiverId
+    type: string;
     text?: string;
-    file?: string;
+    fileId?: string;
     location?: { latitude: number; longitude: number; name?: string };
     contact?: { displayName: string; phoneNumber: string; avatar?: string };
     link?: { url: string; title?: string; description?: string; thumbnail?: string };
-    replyTo?: {
-        messageId: string;
-        text?: string;
-        type: string;
-        senderId: string;
-        fileId?: string;
-    };
-    clientMessageId: string; // temp ID from client for optimistic UI
+    replyTo?: { messageId: string; text?: string; type: string; senderId: string; fileId?: string };
+    clientMessageId: string;
 }
 
-export async function handleSendMessage(
-    socket: any,
-    payload: SendMessagePayload
-) {
+export async function handleSendMessage(socket: any, payload: SendMessagePayload) {
     const senderId = socket.userId;
 
     try {
-        // ── 1. Validate ──────────────────────────────
-        if (!payload.receiverId) {
+        // ── 1. Resolve receiver ──────────────────────
+        let receiverId = payload.receiverId;
+
+        if (!receiverId && payload.phoneNumber) {
+            // Find receiver by phone number
+            const receiver = await User.findOne({
+                phoneNumber: payload.phoneNumber
+            }).select("_id");
+
+            if (!receiver) {
+                return socket.emit(SOCKET_EVENTS.ERROR, {
+                    event: SOCKET_EVENTS.MESSAGE_SEND,
+                    message: "Receiver not found",
+                });
+            }
+            receiverId = receiver._id.toString();
+        }
+
+        if (!receiverId) {
             return socket.emit(SOCKET_EVENTS.ERROR, {
                 event: SOCKET_EVENTS.MESSAGE_SEND,
-                message: "receiverId is required",
+                message: "receiverId or phoneNumber is required",
             });
         }
 
+        // ── 2. Validate content ──────────────────────
         if (payload.type === "text" && !payload.text?.trim()) {
             return socket.emit(SOCKET_EVENTS.ERROR, {
                 event: SOCKET_EVENTS.MESSAGE_SEND,
-                message: "text is required for text messages",
+                message: "Text is required for text messages",
             });
         }
 
-        // ── 2. Find or create chat ───────────────────
+        // ── 3. Find or create chat ───────────────────
         let chat = null;
 
         if (payload.chatId) {
@@ -54,9 +64,17 @@ export async function handleSendMessage(
         }
 
         if (!chat) {
-            // First message — create new chat
+            // Check if chat already exists between these two users
+            chat = await Chat.findOne({
+                isGroup: false,
+                participants: { $all: [senderId, receiverId], $size: 2 },
+            });
+        }
+
+        if (!chat) {
+            // Create new chat
             chat = await Chat.create({
-                participants: [senderId, payload.receiverId],
+                participants: [senderId, receiverId],
                 isGroup: false,
                 unreadCount: {},
                 isPinned: {},
@@ -65,19 +83,19 @@ export async function handleSendMessage(
                 mutedUntil: {},
             });
 
-            // Let both users know a new chat was created
-            socketService.emitToUser(payload.receiverId, "chat:new", chat);
+            // Notify both users about new chat
+            socketService.emitToUser(receiverId, "chat:new", chat);
             socketService.emitToUser(senderId, "chat:new", chat);
         }
 
-        // ── 3. Save message to MongoDB ───────────────
+        // ── 4. Save message ──────────────────────────
         const message = await Message.create({
             chatId: chat._id,
             senderId: new Types.ObjectId(senderId),
-            receiverId: new Types.ObjectId(payload.receiverId),
+            receiverId: new Types.ObjectId(receiverId),
             type: payload.type,
-            text: payload.text ?? null,
-            file: payload.file ? new Types.ObjectId(payload.file) : null,
+            text: payload.text?.trim() ?? null,
+            file: payload.fileId ? new Types.ObjectId(payload.fileId) : null,
             location: payload.location ?? null,
             contact: payload.contact ?? null,
             link: payload.link ?? null,
@@ -95,63 +113,59 @@ export async function handleSendMessage(
             deliveredTo: [],
         });
 
-        // ── 4. Populate for response ─────────────────
+        // ── 5. Populate ──────────────────────────────
         const populated = await Message.findById(message._id)
             .populate("file", "secureUrl thumbnailUrl type metadata")
-            .populate("senderId", "displayName profilePicture")
+            .populate("senderId", "displayName profilePicture phoneNumber")
             .populate("replyTo.file", "secureUrl type")
             .lean();
 
-        // ── 5. Emit to receiver ──────────────────────
-        const isReceiverOnline = socketService.isUserOnline(payload.receiverId);
+        // ── 6. Emit back to sender (replace optimistic) ──
+        socket.emit(SOCKET_EVENTS.MESSAGE_NEW, {
+            message: populated,
+            chatId: chat?._id?.toString(),
+            clientMessageId: payload.clientMessageId,
+        });
 
-        if (isReceiverOnline) {
-            // Receiver is online — deliver immediately
-            socketService.emitToUser(
-                payload.receiverId,
-                SOCKET_EVENTS.MESSAGE_NEW,
-                {
-                    message: populated,
-                    chatId: chat._id,
-                }
-            );
+        // ── 7. Deliver to receiver ───────────────────
+        const isOnline = socketService.isUserOnline(receiverId);
+
+        if (isOnline) {
+            socketService.emitToUser(receiverId, SOCKET_EVENTS.MESSAGE_NEW, {
+                message: populated,
+                chatId: chat?._id?.toString(),
+            });
 
             // Mark as delivered
             await Message.findByIdAndUpdate(message._id, {
                 status: "delivered",
                 $push: {
                     deliveredTo: {
-                        userId: new Types.ObjectId(payload.receiverId),
+                        userId: new Types.ObjectId(receiverId),
                         deliveredAt: new Date(),
                     },
                 },
             });
 
-            // Notify sender it was delivered
+            // Notify sender of delivery
             socket.emit(SOCKET_EVENTS.MESSAGE_DELIVERED, {
                 clientMessageId: payload.clientMessageId,
-                messageId: message._id,
-                chatId: chat._id,
+                messageId: message?._id?.toString(),
+                chatId: chat?._id?.toString(),
                 status: "delivered",
             });
 
         } else {
-            // Receiver is offline — stays as "sent"
-            // Will be delivered when they come online
+            // Receiver offline — stays as sent
             socket.emit(SOCKET_EVENTS.MESSAGE_DELIVERED, {
                 clientMessageId: payload.clientMessageId,
-                messageId: message._id,
-                chatId: chat._id,
+                messageId: message?._id?.toString(),
+                chatId: chat?._id?.toString(),
                 status: "sent",
             });
         }
 
-        // ── 6. Confirm to sender ─────────────────────
-        socket.emit(SOCKET_EVENTS.MESSAGE_NEW, {
-            message: populated,
-            chatId: chat._id,
-            clientMessageId: payload.clientMessageId, // so client can replace optimistic msg
-        });
+        console.log(`✅ Message sent: ${message._id} from ${senderId} to ${receiverId}`);
 
     } catch (error: any) {
         console.error("❌ handleSendMessage error:", error.message);

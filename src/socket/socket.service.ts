@@ -3,6 +3,8 @@ import { Server as SocketServer, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 
 import { SOCKET_EVENTS } from "./socket.events.js";
+import { deliverPendingMessages } from "./handlers/delivery.handler.js";
+import { handleSendMessage } from "./handlers/message.handler.js";
 
 interface AuthPayload {
     userId: string;
@@ -68,59 +70,49 @@ class SocketService {
     };
 
     private setupConnections() {
-        this.io.on("connection", (socket: any) => {
-
-            const { userId, deviceId } = socket as AuthenticationSocket;
+        this.io.on("connection", async (socket: any) => {
+            const { userId } = socket;
 
             console.log(`✅ Connected: userId=${userId} socketId=${socket.id}`);
 
             this.addUser(userId, socket.id);
-
-            // Join personal room — used to send events to a specific user
             socket.join(`user:${userId}`);
-            // Emit online status to contacts
             this.emitOnlineStatus(userId, true);
 
-            // ── Event listeners ──────────────────────
+            // ✅ Deliver pending messages on connect
+            await deliverPendingMessages(userId);
 
-            socket.on(SOCKET_EVENTS.JOIN_CHAT, (chatId: string) => {
-                socket.join(`chat:${chatId}`)
+            // ✅ Register message handler
+            socket.on(SOCKET_EVENTS.MESSAGE_SEND, (payload: any) => {
+                console.log("📨 message:send received:", payload);
+                handleSendMessage(socket, payload);
             });
 
+            socket.on(SOCKET_EVENTS.JOIN_CHAT, (chatId: string) => {
+                socket.join(`chat:${chatId}`);
+            });
 
             socket.on(SOCKET_EVENTS.LEAVE_CHAT, (chatId: string) => {
                 socket.leave(`chat:${chatId}`);
             });
 
             socket.on(SOCKET_EVENTS.TYPING_START, ({ chatId }: { chatId: string }) => {
-                socket.to(chatId).emit(SOCKET_EVENTS.TYPING_START, {
-                    chatId,
-                    userId
-                })
-            });
-            socket.on(SOCKET_EVENTS.TYPING_STOP, ({ chatId }: { chatId: string }) => {
-                socket.to(`chat:${chatId}`).emit(SOCKET_EVENTS.TYPING_STOP, {
-                    chatId,
-                    userId,
-                });
+                socket.to(`chat:${chatId}`).emit(SOCKET_EVENTS.TYPING_START, { chatId, userId });
             });
 
-            // ── Disconnect ───────────────────────────
+            socket.on(SOCKET_EVENTS.TYPING_STOP, ({ chatId }: { chatId: string }) => {
+                socket.to(`chat:${chatId}`).emit(SOCKET_EVENTS.TYPING_STOP, { chatId, userId });
+            });
 
             socket.on("disconnect", (reason: string) => {
                 console.log(`❌ Disconnected: userId=${userId} reason=${reason}`);
-
                 this.removeUser(userId, socket.id);
-
-                // Only emit offline if user has no more active sockets
-
                 if (!this.isUserOnline(userId)) {
-                    this.emitOnlineStatus(userId, false)
+                    this.emitOnlineStatus(userId, false);
                 }
-            })
-
-        })
-    };
+            });
+        });
+    }
 
     // ── User socket tracking ─────────────────────────
 
