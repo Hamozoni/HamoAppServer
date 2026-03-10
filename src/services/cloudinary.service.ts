@@ -20,6 +20,7 @@ interface SignatureResponse {
     resourceType: CloudinaryResourceType;
     maxFileSize: number;
     publicId?: any;
+    uploadUrl: string;
 }
 
 class CloudinaryService {
@@ -74,6 +75,7 @@ class CloudinaryService {
             resourceType,
             maxFileSize,
             publicId: options.publicId,
+            uploadUrl: `https://api.cloudinary.com/v1_1/${this.cloudName}/${resourceType}/upload`,
         };
     }
 
@@ -170,17 +172,12 @@ class CloudinaryService {
     ): SignatureResponse {
         const timestamp = Math.round(Date.now() / 1000);
         const { resourceType, maxFileSize, folderName } = this.resolveUploadConfig(type);
-
-        // ✅ temp folder — separate from permanent files
         const folder = `sudachat/temp/${folderName}/${userId}`;
 
+        // ✅ Sign only folder — same minimal approach as profile picture
         const paramsToSign: Record<string, any> = {
             timestamp,
             folder,
-            resource_type: resourceType,
-            max_file_size: maxFileSize,
-            // ✅ Auto delete from Cloudinary after 30 days safety net
-            invalidate: true,
         };
 
         const signature = cloudinary.utils.api_sign_request(
@@ -196,6 +193,7 @@ class CloudinaryService {
             folder,
             resourceType,
             maxFileSize,
+            uploadUrl: `https://api.cloudinary.com/v1_1/${this.cloudName}/${resourceType}/upload`,
         };
     }
 

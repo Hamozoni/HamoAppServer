@@ -12,6 +12,6 @@ router.use('/auth', authRoutes);
 router.use('/cloudinary', cloudinaryRoutes);
 router.use('/profile', profileRoutes);
 router.use('/contacts', contactRoutes);
-router.use('/file', fileRoutes);
+router.use('/files', fileRoutes);
 router.use("/messages", messageRoutes);
 export default router;

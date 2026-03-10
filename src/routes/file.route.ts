@@ -5,7 +5,6 @@ import fileController from "../controllers/file.controller.js";
 
 const router = Router();
 
-router.post("/upload", authMiddleware,);
 
 router.post("/signature", authMiddleware, fileController.signature);
 
