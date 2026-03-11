@@ -4,7 +4,8 @@ import cloudinaryRoutes from "./cloudinary.route.js";
 import profileRoutes from "./profile.route.js";
 import contactRoutes from "./contact.route.js";
 import fileRoutes from "./file.route.js";
-import messageRoutes from "./message.route.js"
+import messageRoutes from "./message.route.js";
+import chatRoutes from "./chat.route.js"
 
 const router = Router();
 
@@ -14,4 +15,5 @@ router.use('/profile', profileRoutes);
 router.use('/contacts', contactRoutes);
 router.use('/files', fileRoutes);
 router.use("/messages", messageRoutes);
+router.use("/chats", chatRoutes);
 export default router;
