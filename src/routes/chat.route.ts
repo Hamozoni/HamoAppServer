@@ -4,6 +4,8 @@ import chatController from "../controllers/chat.controller.js";
 
 const router = Router()
 
+
+router.get("/", authMiddleware, chatController.getChats);
 router.get("/phone/:phoneNumber", authMiddleware, chatController.getChatByPhone);
 
 export default router;
