@@ -57,6 +57,7 @@ class ChatController {
                         createdAt: chat.lastMessageAt
                             ? formatTime(chat.lastMessageAt.toISOString())
                             : "",
+                        rawTime: chat.lastMessageAt?.getTime() ?? 0,  // ✅ add this
                         isMine: chat.lastMessageSenderId?.toString() === userId,
                         isRead: unread === 0,
                     },
