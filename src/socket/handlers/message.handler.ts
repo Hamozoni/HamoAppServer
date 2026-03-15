@@ -113,6 +113,17 @@ export async function handleSendMessage(socket: any, payload: SendMessagePayload
             deliveredTo: [],
         });
 
+        const chatUpdate = {
+            chatId: chat._id,
+            lastMessageText: payload.type === "text" ? payload.text?.trim() : payload.type,
+            lastMessageType: payload.type,
+            lastMessageAt: message.createdAt,
+            senderId: senderId,
+        };
+
+        socketService.emitToUser(senderId, "chat:updated", chatUpdate);
+        socketService.emitToUser(receiverId, "chat:updated", chatUpdate);
+
         // ── 5. Populate ──────────────────────────────
         const populated = await Message.findById(message._id)
             .populate("file", "secureUrl thumbnailUrl type metadata")

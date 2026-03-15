@@ -41,7 +41,14 @@ class MessageController {
                 .sort({ createdAt: -1 })
                 .limit(Number(limit))
                 .populate("file", "secureUrl thumbnailUrl type metadata")
-                .populate("senderId", "displayName profilePicture")
+                .populate({
+                    path: "senderId",
+                    select: "_id displayName profilePicture",
+                    populate: {
+                        path: 'profilePicture',
+                        select: 'secureUrl'
+                    }
+                })
                 .populate("replyTo.file", "secureUrl thumbnailUrl type")
                 .lean();
 
