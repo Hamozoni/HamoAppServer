@@ -17,6 +17,7 @@ export interface IUser extends Document {
     isOnline: boolean;
 
     isBlocked: boolean;
+    pushToken?: String | null;
 
     createdAt: Date;
     updatedAt: Date;

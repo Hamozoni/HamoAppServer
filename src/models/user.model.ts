@@ -52,6 +52,7 @@ const UserSchema = new Schema<IUser>(
       type: Boolean,
       default: false,
     },
+    pushToken: { type: String, default: null }
   },
   { timestamps: true }
 );
