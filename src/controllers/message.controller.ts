@@ -38,7 +38,7 @@ class MessageController {
 
             // ── 3. Fetch messages ────────────────────
             const messages = await Message.find(query)
-                .sort({ createdAt: -1 })
+                .sort({ createdAt: 1 })
                 .limit(Number(limit))
                 .populate("file", "secureUrl thumbnailUrl type metadata")
                 .populate({
