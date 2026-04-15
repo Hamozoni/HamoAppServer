@@ -8,7 +8,6 @@ const UserSchema = new Schema<IUser>(
       type: String,
       required: true,
       unique: true,
-      index: true,
     },
 
     countryCode: {
@@ -23,8 +22,6 @@ const UserSchema = new Schema<IUser>(
 
     displayName: {
       type: String,
-      required: false,
-      index: true,
     },
 
     about: {
@@ -52,10 +49,15 @@ const UserSchema = new Schema<IUser>(
       type: Boolean,
       default: false,
     },
-    pushToken: { type: String, default: null }
+
+    pushToken: { type: String },
   },
   { timestamps: true }
 );
+
+// Indexes
+UserSchema.index({ phoneNumber: 1 }, { unique: true });
+UserSchema.index({ displayName: "text" });
 
 export default model<IUser>("User", UserSchema);
 
