@@ -13,7 +13,8 @@ export const authMiddleware = async (
     // Get token from header
     const authHeader = req.headers.authorization;
 
-    console.log(authHeader);
+    console.log({ authHeader });
+    console.log({ authHeader: null });
 
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
