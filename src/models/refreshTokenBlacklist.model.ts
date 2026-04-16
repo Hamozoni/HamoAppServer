@@ -6,12 +6,10 @@ const tokenBlacklistSchema = new mongoose.Schema(
             type: String,
             required: true,
             unique: true,
-            index: true,
         },
         userId: {
             type: String,
             required: true,
-            index: true,
         },
         expiresAt: {
             type: Date,

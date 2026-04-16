@@ -56,8 +56,8 @@ const UserSchema = new Schema<IUser>(
 );
 
 // Indexes
-UserSchema.index({ phoneNumber: 1 }, { unique: true });
-UserSchema.index({ displayName: "text" });
+// UserSchema.index({ phoneNumber: 1 }, { unique: true });
+// UserSchema.index({ displayName: "text" });
 
 export default model<IUser>("User", UserSchema);
 

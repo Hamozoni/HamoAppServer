@@ -37,7 +37,7 @@ export interface IDevice extends Document {
     linkedAt: Date,
     pushToken: string,
     isActive: boolean
-    model: any,
+    model: string,
     createdAt: Date,
     updatedAt: Date
 }

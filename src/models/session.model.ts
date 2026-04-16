@@ -8,13 +8,11 @@ const SessionSchema = new Schema<ISession>(
             type: Schema.Types.ObjectId,
             ref: "User",
             required: true,
-            index: true
         },
 
         deviceId: {
             type: String,
             required: true,
-            index: true
         },
 
         refreshTokenHash: {
@@ -57,9 +55,9 @@ const SessionSchema = new Schema<ISession>(
 );
 
 // One active session per device (optional policy)
-SessionSchema.index(
-    { userId: 1, deviceId: 1 },
-    { unique: true }
-);
+// SessionSchema.index(
+//     { userId: 1, deviceId: 1 },
+//     { unique: true }
+// );
 
 export default mongoose.model<ISession>("Session", SessionSchema);

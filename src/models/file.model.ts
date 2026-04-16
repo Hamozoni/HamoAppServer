@@ -45,14 +45,12 @@ const FileSchema = new Schema(
         ownerId: {
             type: Types.ObjectId,
             required: true,
-            index: true,
         },
 
         type: {
             type: String,
             enum: ["image", "video", "audio", "document"],
             required: true,
-            index: true,
         },
 
         purpose: {
@@ -65,7 +63,6 @@ const FileSchema = new Schema(
                 "attachment",
             ],
             required: true,
-            index: true,
         },
 
         // Cloudinary
@@ -104,7 +101,6 @@ const FileSchema = new Schema(
         isDeleted: {
             type: Boolean,
             default: false,
-            index: true,
         },
         thumbnailUrl: {
             type: String,
@@ -112,18 +108,15 @@ const FileSchema = new Schema(
 
         expiresAt: {
             type: Date,
-            index: true,
         },
         // TTL — auto delete from MongoDB X days after download
         deleteAfter: {
             type: Date,
             default: null,
-            index: true,
         },
         downloaded: {
             type: Boolean,
             default: false,
-            index: true,
         },
         downloadedAt: {
             type: Date,
@@ -139,7 +132,5 @@ const FileSchema = new Schema(
     }
 );
 
-FileSchema.index({ ownerId: 1, purpose: 1 });
-FileSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export default model("File", FileSchema);

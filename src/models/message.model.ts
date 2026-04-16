@@ -81,13 +81,11 @@ const MessageSchema = new Schema<IMessage>(
             type: Schema.Types.ObjectId,
             ref: "Chat",
             required: true,
-            index: true,
         },
         senderId: {
             type: Schema.Types.ObjectId,
             ref: "User",
             required: true,
-            index: true,
         },
         receiverId: {
             type: Schema.Types.ObjectId,
@@ -105,7 +103,6 @@ const MessageSchema = new Schema<IMessage>(
             type: String,
             enum: ["pending", "sent", "delivered", "read", "failed"],
             default: "pending",
-            index: true,
         },
 
         // ── Text ─────────────────────────────────
@@ -173,7 +170,6 @@ const MessageSchema = new Schema<IMessage>(
         isDeleted: {
             type: Boolean,
             default: false,
-            index: true,
         },
         deletedFor: [{
             type: Schema.Types.ObjectId,
@@ -202,10 +198,10 @@ const MessageSchema = new Schema<IMessage>(
 );
 
 // ── Indexes ───────────────────────────────────────
-MessageSchema.index({ chatId: 1, createdAt: -1 });
-MessageSchema.index({ chatId: 1, status: 1 });
-MessageSchema.index({ starredBy: 1 });
-MessageSchema.index({ "replyTo.messageId": 1 });
+// MessageSchema.index({ chatId: 1, createdAt: -1 });
+// MessageSchema.index({ chatId: 1, status: 1 });
+// MessageSchema.index({ starredBy: 1 });
+// MessageSchema.index({ "replyTo.messageId": 1 });
 
 // ── Auto-update Chat on new message ──────────────
 MessageSchema.post("save", async function (doc) {

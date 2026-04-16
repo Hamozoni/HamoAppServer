@@ -29,7 +29,7 @@ export interface IChat extends Document {
 const ChatSchema = new Schema<IChat>(
     {
         participants: [{
-            type: String,
+            type: Types.ObjectId,
             ref: "User",
             required: true,
         }],
@@ -37,7 +37,6 @@ const ChatSchema = new Schema<IChat>(
         isGroup: {
             type: Boolean,
             default: false,
-            index: true,
         },
         groupName: {
             type: String,
@@ -52,7 +51,7 @@ const ChatSchema = new Schema<IChat>(
         },
 
         groupAdmins: [{
-            type: String,
+            type: Types.ObjectId,
             ref: "User",
         }],
 
@@ -74,7 +73,6 @@ const ChatSchema = new Schema<IChat>(
         lastMessageAt: {
             type: Date,
             default: null,
-            index: true,
         },
         lastMessageSenderId: {
             type: Types.ObjectId,
@@ -114,9 +112,6 @@ const ChatSchema = new Schema<IChat>(
     }
 );
 
-// ── Indexes ───────────────────────────────────────
-ChatSchema.index({ participants: 1 });
-ChatSchema.index({ participants: 1, lastMessageAt: -1 });
 
 // ── Find direct chat between two users ───────────
 ChatSchema.statics.findDirectChat = async function (userA: string, userB: string) {
@@ -127,3 +122,5 @@ ChatSchema.statics.findDirectChat = async function (userA: string, userB: string
 };
 
 export default model<IChat>("Chat", ChatSchema);
+
+

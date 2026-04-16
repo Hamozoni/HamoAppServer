@@ -8,7 +8,6 @@ const DeviceSchema = new Schema<IDevice>(
             type: Schema.Types.ObjectId,
             ref: "User",
             required: true,
-            index: true
         },
 
         deviceId: {
@@ -52,7 +51,5 @@ const DeviceSchema = new Schema<IDevice>(
     }
 );
 
-// One deviceId per user
-DeviceSchema.index({ userId: 1, deviceId: 1 }, { unique: true });
 
 export default mongoose.model<IDevice>("Device", DeviceSchema);
