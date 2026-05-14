@@ -8,9 +8,7 @@ import jwtService from '../services/jwt.service.js';
 import refreshTokenBlacklistModel from '../models/refreshTokenBlacklist.model.js';
 
 class AuthController {
-
   async sendOTP(req: Request, res: Response, next: NextFunction): Promise<void> {
-
     try {
       const { phoneNumber } = req.body;
       console.log(`📱 Sending OTP to ${phoneNumber}`);
@@ -394,7 +392,5 @@ class AuthController {
       });
     }
   }
-
-}
-
+};
 export default new AuthController();
