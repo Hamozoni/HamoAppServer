@@ -1,14 +1,14 @@
 // src/controllers/auth.controller.ts
 import type { NextFunction, Request, Response } from 'express';
 import User from '../models/user.model.js';
-import TwilioService from '../services/twilio.service.js';
+// import TwilioService from '../services/twilio.service.js';
 import Device from '../models/device.model.js';
 import Session from '../models/session.model.js';
 import jwtService from '../services/jwt.service.js';
 import refreshTokenBlacklistModel from '../models/refreshTokenBlacklist.model.js';
 
 class AuthController {
-  async sendOTP(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async sendOTP(req: Request, res: Response): Promise<void> {
     try {
       const { phoneNumber } = req.body;
       console.log(`📱 Sending OTP to ${phoneNumber}`);
@@ -26,7 +26,6 @@ class AuthController {
         message: `Verification code sent via sms`,
         expiresIn: "5m",
       });
-      next()
     } catch (error: any) {
       res.status(500).json({ error: 'Failed to send verification code' });
     }
