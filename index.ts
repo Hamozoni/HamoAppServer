@@ -31,6 +31,7 @@ server.listen(PORT, () => {
 
 process.on("unhandledRejection", err => {
   console.log(err);
+  process.exit(1);
 })
 
 export { socketService }
