@@ -13,19 +13,13 @@ export const authMiddleware = async (
     // Get token from header
     const authHeader = req.headers.authorization;
 
-    console.log({ authHeader });
-    console.log({ authHeader: null });
-
-
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'No token provided' });
-    }
-
+    };
 
     const token: string = authHeader.split(' ')[1] as string;
 
     // Verify token
-
     const decoded = jwtService.verifyAccessToken(token);
 
     // Get user
@@ -33,7 +27,7 @@ export const authMiddleware = async (
 
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
-    }
+    };
 
     // Attach user to request
     (req as any).user = user;
@@ -47,8 +41,8 @@ export const authMiddleware = async (
         error: 'Token expired',
         code: 'TOKEN_EXPIRED'
       });
-    }
+    };
 
     return res.status(401).json({ error: 'Invalid token' });
-  }
+  };
 };

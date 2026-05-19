@@ -1,6 +1,12 @@
 
 import dotenv from "dotenv";
 import http from 'http';
+
+process.on("uncaughtException", err => {
+  console.log(err);
+  process.exit(1);
+});
+
 import app from "./src/app.js";
 import connect_db from "./src/config/db.js";
 import SocketService from "./src/socket/socket.service.js";
@@ -37,14 +43,6 @@ process.on("unhandledRejection", err => {
   })
 });
 
-
-process.on("uncaughtException", err => {
-  console.log(err);
-  server.close(() => {
-    process.exit(1);
-
-  })
-});
 
 
 
