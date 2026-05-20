@@ -3,7 +3,6 @@ import type { Request, Response, NextFunction } from 'express';
 import jwtService from '../services/jwt.service.js';
 import User from '../models/user.model.js';
 
-
 export const authMiddleware = async (
   req: Request,
   res: Response,
