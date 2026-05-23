@@ -8,6 +8,7 @@ export const authMiddleware = async (
   res: Response,
   next: NextFunction
 ): Promise<any> => {
+
   try {
     // Get token from header
     const authHeader = req.headers.authorization;
