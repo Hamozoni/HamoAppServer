@@ -2,12 +2,14 @@ import express from 'express';
 import cors from 'cors';
 import routes from './routes/index.js';
 import { config } from 'dotenv';
+import helmet from 'helmet';
 
 config();
 
 const app = express();
 
 app.use(express.json());
+app.use(helmet())
 
 app.use(cors({
   origin: "*",
