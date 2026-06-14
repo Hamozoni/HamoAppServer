@@ -3,13 +3,17 @@ import cors from 'cors';
 import routes from './routes/index.js';
 import { config } from 'dotenv';
 import helmet from 'helmet';
+import xss from 'xss-clean';
+import ExpressMongoSanitize from 'express-mongo-sanitize';
 
 config();
 
 const app = express();
 
 app.use(express.json());
-app.use(helmet())
+app.use(helmet());
+app.use(ExpressMongoSanitize());
+app.use(xss());
 
 app.use(cors({
   origin: "*",
