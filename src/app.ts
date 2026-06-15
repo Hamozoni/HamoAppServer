@@ -11,8 +11,8 @@ config();
 const app = express();
 
 app.use(express.json());
-app.use(helmet());
 app.use(ExpressMongoSanitize());
+app.use(helmet());
 app.use(xss());
 
 app.use(cors({
