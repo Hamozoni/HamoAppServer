@@ -18,11 +18,7 @@ app.use(xss());
 app.use(cors({
   origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true, // Enable if using cookies/auth
+  credentials: true,
 }));
-
-
 app.use('/api', routes);
-
-
 export default app;
