@@ -13,11 +13,11 @@ const router = Router();
 
 router.post(
   '/send_otp',
-  otpLimiter,
-  [
-    ...validatePhoneNumber,
-  ],
-  handleValidationErrors,
+  // otpLimiter,
+  // [
+  //   ...validatePhoneNumber,
+  // ],
+  // handleValidationErrors,
   authController.sendOTP
 );
 
