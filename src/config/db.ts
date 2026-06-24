@@ -9,7 +9,9 @@ const connect_db = async () => {
             throw new Error('DATABASE_URL is not defined in environment variables');
         }
         await mongoose.connect(dbUrl);
+        console.log("Database connected successfully!");
     } catch (error) {
+        console.log("Database connection failed!");
         process.exit(1);
 
     }

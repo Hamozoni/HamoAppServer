@@ -8,6 +8,7 @@ import jwtService from '../services/jwt.service.js';
 import refreshTokenBlacklistModel from '../models/refreshTokenBlacklist.model.js';
 
 class AuthController {
+
   async sendOTP(req: Request, res: Response): Promise<void> {
     try {
       const { phoneNumber } = req.body;
