@@ -2,14 +2,18 @@ import type { Request, Response } from "express";
 
 import User from "../models/user.model.js";
 import Chat from "../models/chat.model.js"
+import mongoose from "mongoose";
 
 
 class ChatController {
 
     // GET /chats
-    async getChats(req: Request, res: Response): Promise<void> {
+    async getChats(req: Request, res: Response): Promise<Response> {
+
         try {
-            const userId = (req as any).user._id.toString();
+            const userId = (req as any).user._id;
+
+            console.log("user id", userId)
 
             const chats = await Chat.find({
                 participants: userId,
@@ -19,6 +23,8 @@ class ChatController {
                 .populate("lastMessage", "text type createdAt senderId")
                 .populate("groupAvatar", "secureUrl")
                 .lean();
+
+
 
             // ── Fetch all other participants in one query ──
             const otherIds = [...new Set(
@@ -33,7 +39,6 @@ class ChatController {
             const usersMap = Object.fromEntries(
                 users.map(u => [u._id.toString(), u])
             );
-
             const shaped = chats.map(chat => {
                 const otherId = chat.participants.find(p => p !== userId);
                 const other = otherId ? usersMap[otherId] : null;
@@ -68,11 +73,11 @@ class ChatController {
                 };
             });
 
-            res.json({ chats: shaped });
+            return res.json({ chats: shaped });
 
         } catch (err: any) {
             console.error("getChats error:", err.message);
-            res.status(500).json({ message: "Failed to fetch chats" });
+            return res.status(500).json({ message: "Failed to fetch chats" });
         }
     }
 
