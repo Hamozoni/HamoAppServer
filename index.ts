@@ -2,10 +2,10 @@
 import dotenv from "dotenv";
 import http from 'http';
 
-process.on("uncaughtException", err => {
-  console.log(err);
-  process.exit(1);
-});
+// process.on("uncaughtException", err => {
+//   console.log(err);
+//   process.exit(1);
+// });
 
 import app from "./src/app.js";
 import connect_db from "./src/config/db.js";
@@ -35,13 +35,13 @@ server.listen(PORT, () => {
   }
 });
 
-process.on("unhandledRejection", err => {
-  console.log(err);
-  server.close(() => {
-    process.exit(1);
+// process.on("unhandledRejection", err => {
+//   console.log(err);
+//   server.close(() => {
+//     process.exit(1);
 
-  })
-});
+//   })
+// });
 
 
 
