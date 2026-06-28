@@ -2,12 +2,12 @@ import { Schema, model, Types, Document } from "mongoose";
 
 export interface IChat extends Document {
 
-    participants: string[];
+    participants: Types.ObjectId[];
     isGroup: boolean;
     groupName?: string;
     groupAvatar?: Types.ObjectId;   // ref → File
 
-    groupAdmins: string[];
+    groupAdmins: Types.ObjectId[];
 
     lastMessage?: Types.ObjectId;
     lastMessageText?: string;
@@ -29,7 +29,7 @@ export interface IChat extends Document {
 const ChatSchema = new Schema<IChat>(
     {
         participants: [{
-            type: Types.ObjectId,
+            type: String,
             ref: "User",
             required: true,
         }],
@@ -51,7 +51,7 @@ const ChatSchema = new Schema<IChat>(
         },
 
         groupAdmins: [{
-            type: Types.ObjectId,
+            type: String,
             ref: "User",
         }],
 

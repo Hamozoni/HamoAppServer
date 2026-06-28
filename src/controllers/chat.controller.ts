@@ -11,24 +11,27 @@ class ChatController {
     async getChats(req: Request, res: Response): Promise<Response> {
 
         try {
-            const userId = (req as any).user._id;
+            const userId = (req as any)?.userId?.toString();
 
             console.log("user id", userId)
 
+
             const chats = await Chat.find({
-                participants: userId,
-                lastMessageAt: { $ne: null },
+                participants: { $in: [userId] },
+
             })
                 .sort({ lastMessageAt: -1 })
-                .populate("lastMessage", "text type createdAt senderId")
+                .populate("lastMessage", "text type createdAt senderId ")
                 .populate("groupAvatar", "secureUrl")
+                .populate("groupAdmins", "displayName phoneNumber profilePicture")
                 .lean();
 
+            console.log("chats", chats[0]?.participants)
 
 
             // ── Fetch all other participants in one query ──
             const otherIds = [...new Set(
-                chats.flatMap(c => c.participants.filter(p => p !== userId))
+                chats.flatMap(c => c.participants.filter(p => p?._id !== userId))
             )];
 
             const users = await User.find({ _id: { $in: otherIds } })
