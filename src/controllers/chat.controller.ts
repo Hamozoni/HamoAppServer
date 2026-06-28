@@ -2,8 +2,6 @@ import type { Request, Response } from "express";
 
 import User from "../models/user.model.js";
 import Chat from "../models/chat.model.js"
-import mongoose from "mongoose";
-
 
 class ChatController {
 
@@ -12,10 +10,6 @@ class ChatController {
 
         try {
             const userId = (req as any)?.userId?.toString();
-
-            console.log("user id", userId)
-
-
             const chats = await Chat.find({
                 participants: { $in: [userId] },
 
@@ -25,9 +19,6 @@ class ChatController {
                 .populate("groupAvatar", "secureUrl")
                 .populate("groupAdmins", "displayName phoneNumber profilePicture")
                 .lean();
-
-            console.log("chats", chats[0]?.participants)
-
 
             // ── Fetch all other participants in one query ──
             const otherIds = [...new Set(
@@ -85,15 +76,15 @@ class ChatController {
     }
 
     // GET /chats/phone/:phoneNumber
-    async getChatByPhone(req: Request, res: Response): Promise<void> {
+    async getChatByPhone(req: Request, res: Response): Promise<Response> {
         try {
             const userId = (req as any).user._id;
             const { phoneNumber } = req.params;
 
             const receiver = await User.findOne({ phoneNumber }).select("_id");
+
             if (!receiver) {
-                res.status(404).json({ message: "User not found" });
-                return;
+                return res.status(404).json({ message: "User not found" });
             }
 
             const chat = await Chat.findOne({
@@ -102,13 +93,12 @@ class ChatController {
             }).select("_id");
 
             if (!chat) {
-                res.status(404).json({ message: "No chat yet" });
-                return;
+                return res.status(404).json({ message: "No chat yet" });
             }
 
-            res.json({ chatId: chat._id });
+            return res.json({ chatId: chat._id });
         } catch (err: any) {
-            res.status(500).json({ message: "Failed to get chat" });
+            return res.status(500).json({ message: "Failed to get chat" });
         }
     }
 }
