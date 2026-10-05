@@ -4,10 +4,9 @@ import userModel from "../models/user.model.js";
 class ProfileService {
 
     async updateProfilePicture(userId: string, cloudinaryData: any) {
-        // Mark old avatar deleted
-        await fileModel.updateMany(
+        // Delete old avatar
+        await fileModel.deleteOne(
             { ownerId: userId, purpose: "profile_picture" },
-            { isDeleted: true }
         );
 
         const file = await fileModel.create({

@@ -29,7 +29,7 @@ class SocketService {
 
         this.io = new SocketServer(server, {
             cors: {
-                origin: "http://172.20.10.2:8081",
+                origin: process.env.CLIENT_URL,
                 methods: ["GET", "POST"],
                 credentials: true
             },

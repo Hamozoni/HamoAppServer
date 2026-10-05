@@ -6,7 +6,7 @@ import { Types } from "mongoose";
 class MessageController {
 
     // GET /messages/:chatId
-    async getMessages(req: Request, res: Response): Promise<void> {
+    async getMessages(req: Request, res: Response): Promise<Response> {
         try {
             const { chatId } = req.params;
             const userId = (req as any).user._id;
@@ -19,8 +19,7 @@ class MessageController {
             });
 
             if (!chat) {
-                res.status(404).json({ message: "Chat not found" });
-                return;
+                return res.status(404).json({ message: "Chat not found" });
             }
 
             // ── 2. Build query ───────────────────────
@@ -76,20 +75,21 @@ class MessageController {
                 );
             }
 
-            res.json({
+            return res.status(200).json({
                 messages: messages.reverse(), // oldest first
                 hasMore: messages.length === Number(limit),
             });
 
         } catch (err: any) {
             console.error("getMessages error:", err.message);
-            res.status(500).json({ message: "Failed to fetch messages" });
+            return res.status(500).json({ message: "Failed to fetch messages" });
         }
     }
 
     // GET /messages/:chatId/starred
-    async getStarredMessages(req: Request, res: Response): Promise<void> {
+    async getStarredMessages(req: Request, res: Response): Promise<Response> {
         try {
+
             const { chatId } = req.params;
             const userId = (req as any).user._id;
 
@@ -103,32 +103,30 @@ class MessageController {
                 .populate("senderId", "displayName profilePicture")
                 .lean();
 
-            res.json({ messages });
+            return res.status(200).json({ messages });
 
         } catch (err: any) {
             console.error("getStarredMessages error:", err.message);
-            res.status(500).json({ message: "Failed to fetch starred messages" });
+            return res.status(500).json({ message: "Failed to fetch starred messages" });
         }
     }
 
     // PATCH /messages/:messageId/read
-    async markAsRead(req: Request, res: Response): Promise<void> {
+    async markAsRead(req: Request, res: Response): Promise<Response> {
         try {
             const { messageId } = req.params;
             const userId = (req as any).user._id;
 
             const message = await Message.findById(messageId);
             if (!message) {
-                res.status(404).json({ message: "Message not found" });
-                return;
+                return res.status(404).json({ message: "Message not found" });
             }
 
             const alreadyRead = message.readBy.some(
                 r => r.userId.toString() === userId.toString()
             );
             if (alreadyRead) {
-                res.json({ success: true });
-                return;
+                return res.status(200).json({ success: true });
             }
 
             await Message.findByIdAndUpdate(messageId, {
@@ -153,16 +151,16 @@ class MessageController {
                 }
             );
 
-            res.json({ success: true });
+            return res.status(200).json({ success: true });
 
         } catch (err: any) {
             console.error("markAsRead error:", err.message);
-            res.status(500).json({ message: "Failed to mark as read" });
+            return res.status(500).json({ message: "Failed to mark as read" });
         }
     }
 
     // PATCH /messages/:chatId/read-all
-    async markAllAsRead(req: Request, res: Response): Promise<void> {
+    async markAllAsRead(req: Request, res: Response): Promise<Response> {
         try {
             const { chatId } = req.params;
             const userId = (req as any).user._id;
@@ -197,16 +195,16 @@ class MessageController {
                 userId,
             });
 
-            res.json({ success: true });
+            return res.status(200).json({ success: true });
 
         } catch (err: any) {
             console.error("markAllAsRead error:", err.message);
-            res.status(500).json({ message: "Failed to mark all as read" });
+            return res.status(500).json({ message: "Failed to mark all as read" });
         }
     }
 
     // DELETE /messages/:messageId
-    async deleteMessage(req: Request, res: Response): Promise<void> {
+    async deleteMessage(req: Request, res: Response): Promise<Response> {
         try {
             const { messageId } = req.params;
             const { deleteFor } = req.body; // "me" | "everyone"
@@ -214,15 +212,13 @@ class MessageController {
 
             const message = await Message.findById(messageId);
             if (!message) {
-                res.status(404).json({ message: "Message not found" });
-                return;
+                return res.status(404).json({ message: "Message not found" });
             }
 
             if (deleteFor === "everyone") {
                 // Only sender can delete for everyone
                 if (message.senderId.toString() !== userId.toString()) {
-                    res.status(403).json({ message: "Not authorized" });
-                    return;
+                    return res.status(403).json({ message: "Not authorized" });
                 }
 
                 await Message.findByIdAndUpdate(messageId, {
@@ -246,16 +242,16 @@ class MessageController {
                 });
             }
 
-            res.json({ success: true });
+            return res.status(200).json({ success: true });
 
         } catch (err: any) {
             console.error("deleteMessage error:", err.message);
-            res.status(500).json({ message: "Failed to delete message" });
+            return res.status(500).json({ message: "Failed to delete message" });
         }
     }
 
     // PATCH /messages/:messageId/star
-    async starMessage(req: Request, res: Response): Promise<void> {
+    async starMessage(req: Request, res: Response): Promise<Response> {
         try {
             const { messageId } = req.params;
             const { star } = req.body; // true | false
@@ -268,11 +264,11 @@ class MessageController {
                 isStarred: star,
             });
 
-            res.json({ success: true });
+            return res.status(200).json({ success: true });
 
         } catch (err: any) {
             console.error("starMessage error:", err.message);
-            res.status(500).json({ message: "Failed to star message" });
+            return res.status(500).json({ message: "Failed to star message" });
         }
     }
 }

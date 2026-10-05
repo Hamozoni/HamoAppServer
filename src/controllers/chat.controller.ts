@@ -34,8 +34,8 @@ class ChatController {
                 users.map(u => [u._id.toString(), u])
             );
             const shaped = chats.map(chat => {
-                const otherId = chat.participants.find(p => p !== userId);
-                const other = otherId ? usersMap[otherId] : null;
+                const otherId = chat.participants.find(p => p?.toString() !== userId);
+                const other = otherId ? usersMap[otherId.toString()] : null;
                 const unread =
                     (chat.unreadCount as any)?.[userId] ??
                     (chat.unreadCount as any)?.get?.(userId) ?? 0;
