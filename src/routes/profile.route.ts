@@ -23,10 +23,4 @@ router.post("/push-token", authMiddleware, async (req, res) => {
     res.json({ success: true });
 });
 
-router.post(
-    '/update-profile-picture',
-    authMiddleware,
-    profileController.updateProfilePicture
-);
-
 export default router;

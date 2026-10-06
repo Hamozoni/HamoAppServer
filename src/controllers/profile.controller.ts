@@ -7,18 +7,25 @@ class ProfileController {
 
     async updateProfile(req: Request, res: Response): Promise<Response> {
         try {
-            const { displayName, about } = req.body;
+            const { displayName, about, cloudinaryData } = req.body;
 
-            console.log(req.body);
             const userId: string | undefined = (req as any)?.userId;
 
+            if (!userId)
+                return res.status(401).json({ error: 'Unauthorized' });
+
+            if (cloudinaryData) {
+                await profileService.updateProfilePicture(userId, cloudinaryData)
+            };
             const user: IUser | null = await User.findById(userId).select("_id displayName about phoneNumber").populate("profilePicture", "secureUrl");
 
             if (!user)
                 return res.status(404).json({ error: 'User not found' });
+
             user.displayName = displayName || user?.displayName;
             user.about = about || user?.about;
             await user.save();
+
             return res.status(200).json(user);
         } catch (error) {
             console.error('❌ Update profile error:', error);
@@ -26,21 +33,21 @@ class ProfileController {
         }
     }
 
-    async updateProfilePicture(req: Request, res: Response): Promise<Response> {
-        try {
-            const cloudinaryData = req.body;
-            const userId: string | undefined = (req as any)?.userId;
+    // async updateProfilePicture(req: Request, res: Response): Promise<Response> {
+    //     try {
+    //         const cloudinaryData = req.body;
+    //         const userId: string | undefined = (req as any)?.userId;
 
-            if (!cloudinaryData || !userId)
-                return res.status(400).json({ error: 'Missing file or user ID' });
-            const fileData = await profileService.updateProfilePicture(userId, cloudinaryData);
+    //         if (!cloudinaryData || !userId)
+    //             return res.status(400).json({ error: 'Missing file or user ID' });
+    //         const fileData = await profileService.updateProfilePicture(userId, cloudinaryData);
 
-            return res.status(200).json(fileData);
-        } catch (error) {
-            console.error('❌ Update profile picture error:', error);
-            return res.status(500).json({ error: 'Internal server error' });
-        }
-    }
+    //         return res.status(200).json(fileData);
+    //     } catch (error) {
+    //         console.error('❌ Update profile picture error:', error);
+    //         return res.status(500).json({ error: 'Internal server error' });
+    //     }
+    // }
 
     async getProfile(req: Request, res: Response): Promise<Response> {
         try {

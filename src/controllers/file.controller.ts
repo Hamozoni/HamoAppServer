@@ -18,7 +18,7 @@ class FileController {
                 type
             );
 
-            return res.json(signature);
+            return res.status(200).json(signature);
         } catch (err) {
             return res.status(500).json({ message: "Failed to generate signature" });
         }

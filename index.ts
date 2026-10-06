@@ -9,7 +9,7 @@ import http from 'http';
 
 import app from "./src/app.js";
 import connect_db from "./src/config/db.js";
-import SocketService from "./src/socket/socket.service.js";
+// import SocketService from "./src/socket/socket.service.js";
 
 dotenv.config();
 
@@ -17,9 +17,9 @@ const PORT = process.env.PORT || 5500;
 connect_db();
 
 const server = http.createServer(app);
-const socketService = new SocketService(server)
+// const socketService = new SocketService(server)
 
-app.set("SocketService", socketService);
+// app.set("SocketService", socketService);
 
 server.listen(PORT, () => {
   console.log(`server is listening to port ${PORT}`);
@@ -46,4 +46,4 @@ server.listen(PORT, () => {
 
 
 
-export { socketService }
+// export { socketService }
