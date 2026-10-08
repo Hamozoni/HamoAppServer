@@ -6,6 +6,7 @@ const router = Router();
 
 // Get messages for a chat (with pagination)
 router.get("/:chatId", authMiddleware, MessageController.getMessages);
+router.get("/", authMiddleware, MessageController.postMessage);
 
 // Get starred messages
 router.get("/:chatId/starred", authMiddleware, MessageController.getStarredMessages);
@@ -14,7 +15,7 @@ router.get("/:chatId/starred", authMiddleware, MessageController.getStarredMessa
 router.patch("/:messageId/read", authMiddleware, MessageController.markAsRead);
 
 // Mark all messages in chat as read
-router.patch("/:chatId/read-all", authMiddleware, MessageController.markAllAsRead);
+router.patch("/:chatId/read-all", authMiddleware, MessageController.markAllAsRead)
 
 // Delete message
 router.delete("/:messageId", authMiddleware, MessageController.deleteMessage);

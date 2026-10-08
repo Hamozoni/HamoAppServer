@@ -205,6 +205,7 @@ const MessageSchema = new Schema<IMessage>(
 
 // ── Auto-update Chat on new message ──────────────
 MessageSchema.post("save", async function (doc) {
+
     const Chat = mongoose.model("Chat");
 
     const preview =

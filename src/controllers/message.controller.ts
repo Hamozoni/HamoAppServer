@@ -1,7 +1,9 @@
 import type { Request, Response } from "express";
 import Message from "../models/message.model.js";
 import Chat from "../models/chat.model.js";
+import User from "../models/user.model.js"
 import { Types } from "mongoose";
+import { error } from "node:console";
 
 class MessageController {
 
@@ -86,6 +88,72 @@ class MessageController {
         }
     }
 
+    async postMessage(req: Request, res: Response): Promise<Response> {
+
+
+        const { message: payload, senderId } = req.body;
+
+        try {
+
+            // ── 2. Validate content ──────────────────────
+            if (payload.type === "text" && !payload.text?.trim()) {
+                return res.status(400)
+            }
+
+            // ── 3. Find or create chat ───────────────────
+            let chat = null;
+
+            if (payload.chatId) {
+                chat = await Chat.findById(payload.chatId);
+            }
+
+            if (!chat) {
+                // Check if chat already exists between these two users
+                chat = await Chat.findOne({
+                    isGroup: false,
+                    participants: { $all: [senderId, payload.receiverId], $size: 2 },
+                });
+            }
+
+            if (!chat) {
+                // Create new chat
+                chat = await Chat.create({
+                    participants: [senderId, payload.receiverId],
+                    isGroup: false,
+                });
+
+            }
+
+            // ── 4. Save message ──────────────────────────
+            const message = await Message.create({
+                chatId: chat._id,
+                senderId: new Types.ObjectId(senderId),
+                receiverId: new Types.ObjectId(payload.receiverId),
+                type: payload.type,
+                text: payload.text?.trim() ?? null,
+                file: payload.fileId ? new Types.ObjectId(payload.fileId) : null,
+                location: payload.location ?? null,
+                contact: payload.contact ?? null,
+                link: payload.link ?? null,
+                replyTo: payload.replyTo ? {
+                    messageId: new Types.ObjectId(payload.replyTo.messageId),
+                    text: payload.replyTo.text ?? null,
+                    type: payload.replyTo.type,
+                    senderId: new Types.ObjectId(payload.replyTo.senderId),
+                    file: payload.replyTo.fileId
+                        ? new Types.ObjectId(payload.replyTo.fileId)
+                        : null,
+                } : null,
+                status: "sent",
+            });
+
+            return res.status(201).json({ message })
+        }
+        catch (error) {
+            return res.status(500).json({ message: "Failed to fetch starred messages" });
+        }
+    }
+
     // GET /messages/:chatId/starred
     async getStarredMessages(req: Request, res: Response): Promise<Response> {
         try {
@@ -140,16 +208,16 @@ class MessageController {
             });
 
             // Notify sender via socket
-            const { socketService } = await import("../../index.js");
-            socketService.emitToUser(
-                message.senderId.toString(),
-                "message:read",
-                {
-                    messageId,
-                    chatId: message.chatId,
-                    userId,
-                }
-            );
+            // const { socketService } = await import("../../index.js");
+            // socketService.emitToUser(
+            //     message.senderId.toString(),
+            //     "message:read",
+            //     {
+            //         messageId,
+            //         chatId: message.chatId,
+            //         userId,
+            //     }
+            // );
 
             return res.status(200).json({ success: true });
 
@@ -189,11 +257,11 @@ class MessageController {
             });
 
             // Notify sender via socket
-            const { socketService } = await import("../../index.js");
-            socketService.emitToChat(chatId!.toString(), "message:read_all", {
-                chatId,
-                userId,
-            });
+            // const { socketService } = await import("../../index.js");
+            // socketService.emitToChat(chatId!.toString(), "message:read_all", {
+            //     chatId,
+            //     userId,
+            // });
 
             return res.status(200).json({ success: true });
 
@@ -228,12 +296,12 @@ class MessageController {
                 });
 
                 // Notify everyone in chat
-                const { socketService } = await import("../../index.js");
-                socketService.emitToChat(
-                    message.chatId.toString(),
-                    "message:deleted",
-                    { messageId, chatId: message.chatId, deleteFor: "everyone" }
-                );
+                // const { socketService } = await import("../../index.js");
+                // socketService.emitToChat(
+                //     message.chatId.toString(),
+                //     "message:deleted",
+                //     { messageId, chatId: message.chatId, deleteFor: "everyone" }
+                // );
 
             } else {
                 // Delete for me only
