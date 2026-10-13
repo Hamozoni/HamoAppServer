@@ -11,7 +11,7 @@ router.post(
 );
 
 router.post(
-    "/profile_picture_signature",
+    "/profile_signature",
     authMiddleware,
     cloudinaryController.getProfileUploadSignature
 );
