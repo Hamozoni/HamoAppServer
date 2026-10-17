@@ -17,8 +17,8 @@ class MessageController {
             // ── 1. Verify user is participant ────────
             const chat = await Chat.findOne({
                 _id: chatId,
-                participants: userId.toString(),
-            });
+                participants: { $in: [userId.toString()] },
+            })
 
             if (!chat) {
                 return res.status(404).json({ message: "Chat not found" });
@@ -53,33 +53,32 @@ class MessageController {
                 .populate("replyTo.file", "secureUrl thumbnailUrl type")
                 .lean();
 
-            // ── 4. Mark as delivered if not already ──
-            const undelivered = messages.filter(m =>
-                m.status === "sent" &&
-                m.senderId._id.toString() !== userId.toString()
+            // ── 4. Mark as read 
+
+            await Message.updateMany(
+                {
+                    chatId,
+                    senderId: { $ne: new Types.ObjectId(userId.toString()) },
+                },
+                {
+                    status: "read",
+                    $push: {
+                        readBy: {
+                            userId: new Types.ObjectId(userId.toString()),
+                            readAt: new Date(),
+                        },
+
+                    },
+                }
             );
 
-            if (undelivered.length > 0) {
-                await Message.updateMany(
-                    {
-                        _id: { $in: undelivered.map(m => m._id) },
-                        status: "sent",
-                    },
-                    {
-                        status: "delivered",
-                        $push: {
-                            deliveredTo: {
-                                userId: new Types.ObjectId(userId.toString()),
-                                deliveredAt: new Date(),
-                            },
-                        },
-                    }
-                );
-            }
+            chat.unreadCount.set(userId.toString(), 0);
+            await chat.save();
 
             return res.status(200).json({
                 messages: messages.reverse(), // oldest first
                 hasMore: messages.length === Number(limit),
+                chat
             });
 
         } catch (err: any) {

@@ -149,7 +149,7 @@ const MessageSchema = new Schema<IMessage>(
 
         // ── Reply ────────────────────────────────
         replyTo: {
-            messageId: { type: Schema.Types.ObjectId, ref: "Message" },
+            messageId: { type: Schema.Types.ObjectId, ref: "Message", unique: true },
             text: { type: String, default: null },
             type: { type: String },
             senderId: { type: Schema.Types.ObjectId, ref: "User" },
@@ -158,11 +158,11 @@ const MessageSchema = new Schema<IMessage>(
 
         // ── Receipts ─────────────────────────────
         readBy: [{
-            userId: { type: Schema.Types.ObjectId, ref: "User" },
+            userId: { type: Schema.Types.ObjectId, ref: "User", unique: true },
             readAt: { type: Date, default: Date.now },
         }],
         deliveredTo: [{
-            userId: { type: Schema.Types.ObjectId, ref: "User" },
+            userId: { type: Schema.Types.ObjectId, ref: "User", unique: true },
             deliveredAt: { type: Date, default: Date.now },
         }],
 
@@ -174,6 +174,7 @@ const MessageSchema = new Schema<IMessage>(
         deletedFor: [{
             type: Schema.Types.ObjectId,
             ref: "User",
+            unique: true,
         }],
         isEdited: {
             type: Boolean,
@@ -190,6 +191,7 @@ const MessageSchema = new Schema<IMessage>(
         starredBy: [{
             type: Schema.Types.ObjectId,
             ref: "User",
+            unique: true,
         }],
     },
     {

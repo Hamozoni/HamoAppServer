@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 
 import User from "../models/user.model.js";
 import Chat from "../models/chat.model.js"
+import Message from "../models/message.model.js";
 
 class ChatController {
 
@@ -10,16 +11,6 @@ class ChatController {
 
         try {
             const userId = (req as any)?.userId?.toString();
-            // const chats = await Chat.find({
-            //     participants: { $in: [userId] },
-
-            // })
-            //     .sort({ lastMessageAt: -1 })
-            //     .populate("lastMessage", "text type createdAt senderId _id")
-            //     .populate("groupAvatar", "secureUrl")
-            //     .populate("groupAdmins", "displayName phoneNumber profilePicture _id")
-            //     .populate("participants", "displayName phoneNumber profilePicture _id")
-            //     .lean();
 
             const chats = await Chat.find({
                 participants: { $in: [userId] },
@@ -37,14 +28,26 @@ class ChatController {
                 })
                 .populate({
                     path: "participants",
-                    select: "displayName phoneNumber _id profilePicture",
+                    select: "displayName phoneNumber _id profilePicture about",
                     populate: {
                         path: "profilePicture",
                         select: "secureUrl" // fields you want from the profilePicture document (e.g., secureUrl, url, etc.)
                     }
                 });
 
-            console.log({ chat: chats[0]?.participants })
+            await Message.updateMany({
+                chatId: { $in: [...chats.map(chat => chat._id)] },
+                senderId: { $ne: userId },
+                status: "sent",
+
+            },
+                {
+                    status: "delivered",
+
+                }
+            )
+
+            console.log(chats[0]?.unreadCount);
 
             return res.status(200).json({ chats });
 
