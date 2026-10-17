@@ -10,64 +10,43 @@ class ChatController {
 
         try {
             const userId = (req as any)?.userId?.toString();
+            // const chats = await Chat.find({
+            //     participants: { $in: [userId] },
+
+            // })
+            //     .sort({ lastMessageAt: -1 })
+            //     .populate("lastMessage", "text type createdAt senderId _id")
+            //     .populate("groupAvatar", "secureUrl")
+            //     .populate("groupAdmins", "displayName phoneNumber profilePicture _id")
+            //     .populate("participants", "displayName phoneNumber profilePicture _id")
+            //     .lean();
+
             const chats = await Chat.find({
                 participants: { $in: [userId] },
-
             })
                 .sort({ lastMessageAt: -1 })
-                .populate("lastMessage", "text type createdAt senderId ")
+                .populate("lastMessage", "text type createdAt senderId _id")
                 .populate("groupAvatar", "secureUrl")
-                .populate("groupAdmins", "displayName phoneNumber profilePicture")
-                .lean();
+                .populate("groupAdmins", "displayName phoneNumber _id")
+                .populate({
+                    path: "groupAdmins",
+                    populate: {
+                        path: "profilePicture",
+                        select: "secureUrl" // specify the fields you want from the profilePicture document
+                    }
+                })
+                .populate({
+                    path: "participants",
+                    select: "displayName phoneNumber _id profilePicture",
+                    populate: {
+                        path: "profilePicture",
+                        select: "secureUrl" // fields you want from the profilePicture document (e.g., secureUrl, url, etc.)
+                    }
+                });
 
-            // ── Fetch all other participants in one query ──
-            const otherIds = [...new Set(
-                chats.flatMap(c => c.participants.filter(p => p?._id !== userId))
-            )];
+            console.log({ chat: chats[0]?.participants })
 
-            const users = await User.find({ _id: { $in: otherIds } })
-                .select("_id displayName phoneNumber profilePicture")
-                .populate("profilePicture", "secureUrl")
-                .lean();
-
-            const usersMap = Object.fromEntries(
-                users.map(u => [u._id.toString(), u])
-            );
-            const shaped = chats.map(chat => {
-                const otherId = chat.participants.find(p => p?.toString() !== userId);
-                const other = otherId ? usersMap[otherId.toString()] : null;
-                const unread =
-                    (chat.unreadCount as any)?.[userId] ??
-                    (chat.unreadCount as any)?.get?.(userId) ?? 0;
-
-                return {
-                    _id: chat._id,
-                    isGroup: chat.isGroup,
-                    groupName: chat.groupName ?? null,
-                    contact: {
-                        _id: other?._id ?? null,
-                        displayName: other?.displayName ?? "Unknown",
-                        phoneNumber: (other as any)?.phoneNumber ?? "",
-                        photoURL: (other?.profilePicture as any)?.secureUrl ?? null,
-                    },
-                    lastMessage: {
-                        type: chat.lastMessageType ?? "text",
-                        text: chat.lastMessageText ?? null,
-                        createdAt: chat.lastMessageAt
-                            ? formatTime(chat.lastMessageAt.toISOString())
-                            : "",
-                        rawTime: chat.lastMessageAt?.getTime() ?? 0,  // ✅ add this
-                        isMine: chat.lastMessageSenderId?.toString() === userId,
-                        isRead: unread === 0,
-                    },
-                    unreadCount: unread,
-                    isOnline: false,
-                    isPinned: (chat.isPinned as any)?.[userId] ?? false,
-                    isArchived: (chat.isArchived as any)?.[userId] ?? false,
-                };
-            });
-
-            return res.json({ chats: shaped });
+            return res.status(200).json({ chats });
 
         } catch (err: any) {
             console.error("getChats error:", err.message);
