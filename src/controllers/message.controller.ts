@@ -50,7 +50,7 @@ class MessageController {
                         select: 'secureUrl'
                     }
                 })
-                .populate("replyTo.file", "secureUrl thumbnailUrl type")
+                .populate("replyTo.file", "secureUrl thumbnailUrl type text")
                 .lean();
 
             // ── 4. Mark as read 
@@ -90,7 +90,8 @@ class MessageController {
     async postMessage(req: Request, res: Response): Promise<Response> {
 
 
-        const { message: payload, senderId } = req.body;
+        const { message: payload } = req.body;
+        const senderId = (req as any).user._id;
 
         try {
 
@@ -134,15 +135,7 @@ class MessageController {
                 location: payload.location ?? null,
                 contact: payload.contact ?? null,
                 link: payload.link ?? null,
-                replyTo: payload.replyTo ? {
-                    messageId: new Types.ObjectId(payload.replyTo.messageId),
-                    text: payload.replyTo.text ?? null,
-                    type: payload.replyTo.type,
-                    senderId: new Types.ObjectId(payload.replyTo.senderId),
-                    file: payload.replyTo.fileId
-                        ? new Types.ObjectId(payload.replyTo.fileId)
-                        : null,
-                } : null,
+                replyTo: payload.replyTo ? new Types.ObjectId(payload.fileId) : null,
                 status: "sent",
             });
 

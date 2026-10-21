@@ -45,13 +45,7 @@ export interface IMessage extends Document {
     };
 
     // reply
-    replyTo?: {
-        messageId: Types.ObjectId;
-        text?: string;
-        type: MessageType;
-        senderId: Types.ObjectId;
-        file?: Types.ObjectId;  // ref → File (for media replies)
-    };
+    replyTo?: Types.ObjectId;
 
     // receipts
     readBy: {
@@ -149,11 +143,9 @@ const MessageSchema = new Schema<IMessage>(
 
         // ── Reply ────────────────────────────────
         replyTo: {
-            messageId: { type: Schema.Types.ObjectId, ref: "Message", unique: true },
-            text: { type: String, default: null },
-            type: { type: String },
-            senderId: { type: Schema.Types.ObjectId, ref: "User" },
-            file: { type: Schema.Types.ObjectId, ref: "File", default: null },
+            type: Schema.Types.ObjectId,
+            ref: "Message",
+            default: null,
         },
 
         // ── Receipts ─────────────────────────────

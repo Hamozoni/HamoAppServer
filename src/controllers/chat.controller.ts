@@ -16,11 +16,14 @@ class ChatController {
                 participants: { $in: [userId] },
             })
                 .sort({ lastMessageAt: -1 })
-                .populate("lastMessage", "text type createdAt senderId _id")
+                .populate({
+                    path: "lastMessage",
+                    select: 'status'
+                })
                 .populate("groupAvatar", "secureUrl")
-                .populate("groupAdmins", "displayName phoneNumber _id")
                 .populate({
                     path: "groupAdmins",
+                    select: "displayName phoneNumber _id about",
                     populate: {
                         path: "profilePicture",
                         select: "secureUrl" // specify the fields you want from the profilePicture document
