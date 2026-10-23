@@ -34,6 +34,7 @@ class ChatController {
                     }
                 });
 
+
             await Message.updateMany({
                 chatId: { $in: [...chats.map(chat => chat._id)] },
                 senderId: { $ne: userId },
@@ -44,7 +45,15 @@ class ChatController {
                     status: "delivered",
 
                 }
-            )
+            );
+
+            await Chat.updateMany({
+                participants: { $in: [userId] },
+                lastMessageStatus: "sent",
+                lastMessageSenderId: { $ne: userId }
+            }, {
+                lastMessageStatus: "delivered",
+            })
 
             console.log(chats[0]?.unreadCount);
 

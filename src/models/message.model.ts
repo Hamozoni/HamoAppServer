@@ -198,19 +198,7 @@ const MessageSchema = new Schema<IMessage>(
 
 // ── Auto-update Chat on new message ──────────────
 MessageSchema.post("save", async function (doc) {
-
     const Chat = mongoose.model("Chat");
-
-    // const preview =
-    //     doc.type === "text" ? doc.text :
-    //         doc.type === "image" ? "📷 Photo" :
-    //             doc.type === "video" ? "🎥 Video" :
-    //                 doc.type === "audio" ? "🎤 Voice message" :
-    //                     doc.type === "document" ? "📄 Document" :
-    //                         doc.type === "location" ? "📍 Location" :
-    //                             doc.type === "contact" ? "👤 Contact" :
-    //                                 doc.type === "link" ? doc.link?.title ?? "🔗 Link" :
-    //                                     "Message";
 
     await Chat.findByIdAndUpdate(doc.chatId, {
         lastMessage: doc._id,
@@ -224,6 +212,7 @@ MessageSchema.post("save", async function (doc) {
         }),
     });
 });
+
 
 import mongoose from "mongoose";
 export default model<IMessage>("Message", MessageSchema);

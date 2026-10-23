@@ -63,7 +63,12 @@ class MessageController {
                 }
             );
 
+            if (chat.lastMessageSenderId?.toString() !== userId.toString()) {
+                chat.lastMessageStatus = "read";
+            }
+
             chat.unreadCount.set(userId.toString(), 0);
+            chat.lastMessageAt = new Date();
             await chat.save();
 
             return res.status(200).json({
