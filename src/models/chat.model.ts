@@ -9,11 +9,12 @@ export interface IChat extends Document {
 
     groupAdmins: Types.ObjectId[];
 
-    lastMessage?: Types.ObjectId;
+    lastMessageId?: Types.ObjectId;
     lastMessageText?: string;
     lastMessageType: string;
     lastMessageAt?: Date;
     lastMessageSenderId?: Types.ObjectId;
+    lastMessageStatus: string;
 
     // per-user settings — keyed by userId string
     unreadCount: Map<string, number>;
@@ -51,15 +52,14 @@ const ChatSchema = new Schema<IChat>(
         },
 
         groupAdmins: [{
-            type: String,
+            type: Types.ObjectId,
             ref: "User",
         }],
 
         // ── Last message preview ──────────────────
-        lastMessage: {
+        lastMessageId: {
             type: Types.ObjectId,
-            ref: "Message",
-            default: null,
+            ref: "Message"
         },
         lastMessageText: {
             type: String,
@@ -73,6 +73,11 @@ const ChatSchema = new Schema<IChat>(
         lastMessageAt: {
             type: Date,
             default: null,
+        },
+        lastMessageStatus: {
+            type: String,
+            enum: ["pending", "sent", "delivered", "read", "failed"],
+            default: "sent",
         },
         lastMessageSenderId: {
             type: Types.ObjectId,

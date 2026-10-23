@@ -14,7 +14,6 @@ export interface IMessage extends Document {
 
     type: MessageType;
     status: MessageStatus;
-
     // text
     text?: string;
 
@@ -96,7 +95,7 @@ const MessageSchema = new Schema<IMessage>(
         status: {
             type: String,
             enum: ["pending", "sent", "delivered", "read", "failed"],
-            default: "pending",
+            default: "sent",
         },
 
         // ── Text ─────────────────────────────────
@@ -202,23 +201,24 @@ MessageSchema.post("save", async function (doc) {
 
     const Chat = mongoose.model("Chat");
 
-    const preview =
-        doc.type === "text" ? doc.text :
-            doc.type === "image" ? "📷 Photo" :
-                doc.type === "video" ? "🎥 Video" :
-                    doc.type === "audio" ? "🎤 Voice message" :
-                        doc.type === "document" ? "📄 Document" :
-                            doc.type === "location" ? "📍 Location" :
-                                doc.type === "contact" ? "👤 Contact" :
-                                    doc.type === "link" ? doc.link?.title ?? "🔗 Link" :
-                                        "Message";
+    // const preview =
+    //     doc.type === "text" ? doc.text :
+    //         doc.type === "image" ? "📷 Photo" :
+    //             doc.type === "video" ? "🎥 Video" :
+    //                 doc.type === "audio" ? "🎤 Voice message" :
+    //                     doc.type === "document" ? "📄 Document" :
+    //                         doc.type === "location" ? "📍 Location" :
+    //                             doc.type === "contact" ? "👤 Contact" :
+    //                                 doc.type === "link" ? doc.link?.title ?? "🔗 Link" :
+    //                                     "Message";
 
     await Chat.findByIdAndUpdate(doc.chatId, {
         lastMessage: doc._id,
-        lastMessageText: preview,
+        lastMessageText: doc.text,
         lastMessageType: doc.type,
         lastMessageAt: doc.createdAt,
         lastMessageSenderId: doc.senderId,
+        lastMessageStatus: "sent",
         ...(doc.receiverId && {
             $inc: { [`unreadCount.${doc.receiverId}`]: 1 },
         }),

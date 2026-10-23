@@ -11,8 +11,7 @@ class FileService {
         options: {
             type: "image" | "video" | "audio" | "document";
             purpose?: string;
-            messageId?: string;
-            chatId?: string;
+            messageId?: any;
         }
     ) {
         const resourceType =

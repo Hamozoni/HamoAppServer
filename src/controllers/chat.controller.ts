@@ -16,10 +16,6 @@ class ChatController {
                 participants: { $in: [userId] },
             })
                 .sort({ lastMessageAt: -1 })
-                .populate({
-                    path: "lastMessage",
-                    select: 'status'
-                })
                 .populate("groupAvatar", "secureUrl")
                 .populate({
                     path: "groupAdmins",

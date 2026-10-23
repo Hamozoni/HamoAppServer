@@ -1,9 +1,8 @@
 import type { Request, Response } from "express";
 import Message from "../models/message.model.js";
 import Chat from "../models/chat.model.js";
-import User from "../models/user.model.js"
 import { Types } from "mongoose";
-import { error } from "node:console";
+import fileService from "../services/file.service.js";
 
 class MessageController {
 
@@ -42,14 +41,6 @@ class MessageController {
                 .sort({ createdAt: 1 })
                 .limit(Number(limit))
                 .populate("file", "secureUrl thumbnailUrl type metadata")
-                .populate({
-                    path: "senderId",
-                    select: "_id displayName profilePicture",
-                    populate: {
-                        path: 'profilePicture',
-                        select: 'secureUrl'
-                    }
-                })
                 .populate("replyTo.file", "secureUrl thumbnailUrl type text")
                 .lean();
 
@@ -90,7 +81,7 @@ class MessageController {
     async postMessage(req: Request, res: Response): Promise<Response> {
 
 
-        const { message: payload } = req.body;
+        const { payload, cloudinaryData } = req.body;
         const senderId = (req as any).user._id;
 
         try {
@@ -102,6 +93,7 @@ class MessageController {
 
             // ── 3. Find or create chat ───────────────────
             let chat = null;
+            let isNewChat = false
 
             if (payload.chatId) {
                 chat = await Chat.findById(payload.chatId);
@@ -122,27 +114,44 @@ class MessageController {
                     isGroup: false,
                 });
 
-            }
+                isNewChat = true;
+
+            };
 
             // ── 4. Save message ──────────────────────────
-            const message = await Message.create({
-                chatId: chat._id,
-                senderId: new Types.ObjectId(senderId),
-                receiverId: new Types.ObjectId(payload.receiverId),
-                type: payload.type,
-                text: payload.text?.trim() ?? null,
-                file: payload.fileId ? new Types.ObjectId(payload.fileId) : null,
-                location: payload.location ?? null,
-                contact: payload.contact ?? null,
-                link: payload.link ?? null,
-                replyTo: payload.replyTo ? new Types.ObjectId(payload.fileId) : null,
+            let message = await Message.create({
+                ...payload,
                 status: "sent",
+                chatId: chat._id,
             });
 
-            return res.status(201).json({ message })
+            if (cloudinaryData) {
+                if (!message._id) return res.status(500).json({ message: "Failed to fetch messages" });
+
+
+                const fileData = await fileService.saveChatMedia(
+                    senderId,
+                    cloudinaryData,
+                    { type: payload.type, messageId: message._id });
+
+                message.file = fileData._id;
+
+                await message.save();
+            };
+
+
+
+            await message.populate([
+                { path: "file", select: "secureUrl thumbnailUrl type metadata" },
+                { path: "replyTo.file", select: "secureUrl thumbnailUrl type text" },
+            ]);
+
+
+            return res.status(201).json({ isNewChat, message })
         }
         catch (error) {
-            return res.status(500).json({ message: "Failed to fetch starred messages" });
+            console.log({ err: error })
+            return res.status(500).json({ message: "Failed to post message" });
         }
     }
 
