@@ -201,7 +201,7 @@ MessageSchema.post("save", async function (doc) {
     const Chat = mongoose.model("Chat");
 
     await Chat.findByIdAndUpdate(doc.chatId, {
-        lastMessage: doc._id,
+        lastMessageId: doc._id,
         lastMessageText: doc.text,
         lastMessageType: doc.type,
         lastMessageAt: doc.createdAt,
