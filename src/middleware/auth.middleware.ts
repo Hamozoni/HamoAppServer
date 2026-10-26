@@ -13,19 +13,27 @@ export const authMiddleware = async (
     // Get token from header
     const authHeader = req.headers.authorization;
 
-    console.log("authHeader: ", authHeader);
+
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log({ error: 'No token provided' })
       return res.status(401).json({ error: 'No token provided' });
     };
 
     const token: string = authHeader.split(' ')[1] as string;
 
+    console.log({ token });
+
     // Verify token
     const decoded = jwtService.verifyAccessToken(token);
-
+    if (!decoded) {
+      return res.status(401).json({ error: 'User not found' });
+    };
+    console.log({ decoded });
     // Get user
     const user = await User.findById(decoded.userId);
+
+    console.log({ user })
 
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
@@ -37,14 +45,9 @@ export const authMiddleware = async (
 
     next();
   } catch (error: any) {
-
-    if (error.message === 'Access token expired') {
-      return res.status(401).json({
-        error: 'Token expired',
-        code: 'TOKEN_EXPIRED'
-      });
-    };
-
+    if (error?.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired', code: 'TOKEN_EXPIRED' });
+    }
     return res.status(401).json({ error: 'Invalid token' });
-  };
+  }
 };

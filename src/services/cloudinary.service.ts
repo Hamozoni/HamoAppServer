@@ -226,7 +226,7 @@ export type CloudinaryResourceType = "image" | "video" | "raw" | "auto";
 
 export interface UploadSignatureOptions {
     userId: string;
-    type: "image" | "video" | "audio" | "document";
+    type: "image" | "video" | "audio" | "document" | "auto";
     folder?: string;
     publicId?: string;
 }
@@ -238,7 +238,7 @@ export interface SignatureResponse {
     apiKey: string;
     folder: string;
     resourceType: CloudinaryResourceType;
-    maxFileSize: number; // NOT signed. For client-side validation only.
+    maxFileSize?: number; // NOT signed. For client-side validation only.
     publicId?: string;
     overwrite?: boolean;
     invalidate?: boolean;

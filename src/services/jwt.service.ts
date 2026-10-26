@@ -45,6 +45,7 @@ class JWTService {
 
   // Decode token without verification
   decodeToken(token: string): IJWTPayload | null {
+    console.log({ decodeToken: jwt.decode(token) })
     return jwt.decode(token) as IJWTPayload | null;
   }
 }

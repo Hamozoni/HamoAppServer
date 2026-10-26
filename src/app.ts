@@ -15,11 +15,8 @@ app.use(ExpressMongoSanitize());
 app.use(helmet());
 app.use(xss());
 
-app.use(cors({
-  origin: "http://172.20.10.2:8081",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true,
-}));
-
+app.use(cors());
+process.on('unhandledRejection', (e) => console.error('UNHANDLED REJECTION', e));
+process.on('uncaughtException', (e) => console.error('UNCAUGHT EXCEPTION', e));
 app.use('/api', routes);
 export default app;
