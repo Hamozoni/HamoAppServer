@@ -1,182 +1,187 @@
-// import { Server as HTTPServer } from "http";
-// import { Server as SocketServer, Socket } from "socket.io";
-// import jwt from "jsonwebtoken";
+import { Server as HTTPServer } from "http";
+import { Server as SocketServer, Socket } from "socket.io";
+import jwt from "jsonwebtoken";
 
-// import { SOCKET_EVENTS } from "./socket.events.js";
-// import { deliverPendingMessages } from "./handlers/delivery.handler.js";
-// import { handleSendMessage } from "./handlers/message.handler.js";
+import { SOCKET_EVENTS } from "./socket.events.js";
+import { deliverPendingMessages } from "./handlers/delivery.handler.js";
+import { handleSendMessage } from "./handlers/message.handler.js";
+import jwtService from "../services/jwt.service.js";
 
-// interface AuthPayload {
-//     userId: string;
-//     deviceId: string;
-//     type: string
-// };
-
-
-// interface AuthenticationSocket extends Socket {
-//     userId: string;
-//     deviceId: string;
-// };
-
-// class SocketService {
+interface AuthPayload {
+    userId: string;
+    deviceId: string;
+    type: string
+};
 
 
-//     private io!: SocketServer;
-//     // Map userId → Set of socketIds (user can have multiple connections)
-//     private userSockets: Map<string, Set<string>> = new Map();
+interface AuthenticationSocket extends Socket {
+    userId: string;
+    deviceId: string;
+};
 
-//     constructor(server: HTTPServer) {
-
-//         this.io = new SocketServer(server, {
-//             cors: {
-//                 origin: process.env.CLIENT_URL,
-//                 methods: ["GET", "POST"],
-//                 credentials: true
-//             },
-//             pingTimeout: 60000,
-//             pingInterval: 25000
-//         });
-
-//         this.setupMiddleware();
-//         this.setupConnections();
-//         console.log("🔌 Socket.IO initialized");
-//     };
-
-//     private setupMiddleware() {
-//         this.io.use((socket: any, next) => {
-//             try {
-//                 const token = socket.handshake.auth?.token ||
-//                     socket.handshake.headers?.authorization?.split(" ")[1];
-
-//                 if (!token) {
-//                     return next(new Error("Authentication token required"))
-//                 };
-
-//                 const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET!) as AuthPayload;
-
-//                 if (payload.type !== "access") {
-//                     return next(new Error("Invalid token type"));
-//                 };
+class SocketService {
 
 
-//                 socket.userId = payload.userId;
-//                 socket.deviceId = payload.deviceId;
+    private io!: SocketServer;
+    // Map userId → Set of socketIds (user can have multiple connections)
+    private userSockets: Map<string, Set<string>> = new Map();
 
-//                 next();
-//             } catch (err) {
+    constructor(server: HTTPServer) {
 
-//             }
-//         })
-//     };
+        this.io = new SocketServer(server, {
+            cors: {
+                methods: ["GET", "POST"],
+                credentials: true
+            },
+            pingTimeout: 60000,
+            pingInterval: 25000
+        });
 
-//     private setupConnections() {
-//         this.io.on("connection", async (socket: any) => {
-//             const { userId } = socket;
+        this.setupMiddleware();
+        this.setupConnections();
+        console.log("🔌 Socket.IO initialized");
+    };
 
-//             console.log(`✅ Connected: userId=${userId} socketId=${socket.id}`);
+    private setupMiddleware() {
+        this.io.use((socket: any, next) => {
+            try {
+                const token = socket.handshake.auth?.token ||
+                    socket.handshake.headers?.authorization?.split(" ")[1];
 
-//             this.addUser(userId, socket.id);
-//             socket.join(`user:${userId}`);
-//             this.emitOnlineStatus(userId, true);
+                console.log("🔍 Server received token:", token); // 👈 Add this
 
-//             // ✅ Deliver pending messages on connect
-//             await deliverPendingMessages(userId);
+                if (!token) {
+                    console.log("❌ Token is missing");
+                    return next(new Error("Authentication token required"));
+                };
 
-//             // ✅ Register message handler
-//             socket.on(SOCKET_EVENTS.MESSAGE_SEND, (payload: any) => {
-//                 console.log("📨 message:send received:", payload);
-//                 handleSendMessage(socket, payload);
-//             });
+                const payload = jwtService.verifyAccessToken(token) as AuthPayload;
+                console.log("✅ Token verified for userId:", payload.userId);
 
-//             socket.on(SOCKET_EVENTS.JOIN_CHAT, (chatId: string) => {
-//                 socket.join(`chat:${chatId}`);
-//             });
+                if (payload.type !== "access") {
+                    console.log("❌ Invalid token type:", payload.type);
+                    return next(new Error("Invalid token type"));
+                };
 
-//             socket.on(SOCKET_EVENTS.LEAVE_CHAT, (chatId: string) => {
-//                 socket.leave(`chat:${chatId}`);
-//             });
+                socket.userId = payload.userId;
+                socket.deviceId = payload.deviceId;
 
-//             socket.on(SOCKET_EVENTS.TYPING_START, ({ chatId }: { chatId: string }) => {
-//                 socket.to(`chat:${chatId}`).emit(SOCKET_EVENTS.TYPING_START, { chatId, userId });
-//             });
+                next();
+            } catch (err: any) {
+                console.log("❌ JWT Verification Error:", err.message); // 👈 See exact error (e.g., token expired, invalid signature)
+                return next(new Error("Authentication failed"));
+            }
+        })
+    };
 
-//             socket.on(SOCKET_EVENTS.TYPING_STOP, ({ chatId }: { chatId: string }) => {
-//                 socket.to(`chat:${chatId}`).emit(SOCKET_EVENTS.TYPING_STOP, { chatId, userId });
-//             });
+    private setupConnections() {
+        this.io.on("connection", async (socket: any) => {
+            const { userId } = socket;
 
-//             socket.on("disconnect", (reason: string) => {
-//                 console.log(`❌ Disconnected: userId=${userId} reason=${reason}`);
-//                 this.removeUser(userId, socket.id);
-//                 if (!this.isUserOnline(userId)) {
-//                     this.emitOnlineStatus(userId, false);
-//                 }
-//             });
-//         });
-//     }
+            console.log(`✅ Connected: userId=${userId} socketId=${socket.id}`);
 
-//     // ── User socket tracking ─────────────────────────
+            this.addUser(userId, socket.id);
+            socket.join(`user:${userId}`);
+            this.emitOnlineStatus(userId, true);
 
+            // ✅ Deliver pending messages on connect
+            await deliverPendingMessages(userId);
 
-//     private addUser(userId: string, socketId: string) {
+            // ✅ Register message handler
+            socket.on(SOCKET_EVENTS.MESSAGE_SEND, (payload: any) => {
+                console.log("📨 message:send received:", payload);
+                handleSendMessage(socket, payload);
+            });
 
-//         if (!this.userSockets.has(userId)) {
-//             this.userSockets.set(userId, new Set())
-//         };
+            socket.on(SOCKET_EVENTS.JOIN_CHAT, (chatId: string) => {
+                socket.join(`chat:${chatId}`);
+            });
 
-//         this.userSockets.get(userId)!.add(socketId)
-//     };
+            socket.on(SOCKET_EVENTS.LEAVE_CHAT, (chatId: string) => {
+                socket.leave(`chat:${chatId}`);
+            });
 
-//     private removeUser(userId: string, socketId: string) {
+            socket.on(SOCKET_EVENTS.TYPING_START, ({ chatId }: { chatId: string }) => {
+                socket.to(`chat:${chatId}`).emit(SOCKET_EVENTS.TYPING_START, { chatId, userId });
+            });
 
-//         this.userSockets.get(userId)?.delete(socketId);
+            socket.on(SOCKET_EVENTS.TYPING_STOP, ({ chatId }: { chatId: string }) => {
+                socket.to(`chat:${chatId}`).emit(SOCKET_EVENTS.TYPING_STOP, { chatId, userId });
+            });
 
-//         if (this.userSockets.get(userId)?.size === 0) {
-//             this.userSockets.delete(userId)
-//         }
-//     };
+            socket.on("disconnect", (reason: string) => {
+                console.log(`❌ Disconnected: userId=${userId} reason=${reason}`);
+                this.removeUser(userId, socket.id);
+                if (!this.isUserOnline(userId)) {
+                    this.emitOnlineStatus(userId, false);
+                }
+            });
+        });
+    }
 
-//     public isUserOnline(userId: string): boolean {
-//         return (this.userSockets.get(userId)?.size ?? 0) > 0
-//     };
-
-//     // ── Emit helpers ─────────────────────────────────
-
-//     // Send to a specific user (all their devices)
-//     public emitToUser(userId: string, event: string, data: any) {
-//         this.io.to(`user:${userId}`).emit(event, data)
-//     };
-
-//     // Send to all users in a chat room
-
-//     public emitToChat(chatId: string, event: string, data: any) {
-//         this.io.to(`chat:${chatId}`).emit(event, data)
-//     };
-//     // Send to everyone in chat EXCEPT the sender
-//     public emitToChatExcept(chatId: string, senderId: string, event: string, data: any) {
-//         this.io.to(`user:${senderId}`)
-//             .except(`chat:${chatId}`)
-//             .emit(event, data);
-
-//         this.io.to(`chat:${chatId}`)
-//             .except(senderId)
-//             .emit(event, data)
-//     };
-
-//     private emitOnlineStatus(userId: string, isOnline: boolean) {
-//         // Broadcast to everyone — contacts will filter on client side
-//         this.io.emit(SOCKET_EVENTS.USER_ONLINE_STATUS, {
-//             userId,
-//             isOnline,
-//             lasSeen: isOnline ? null : new Date()
-
-//         });
-//     }
+    // ── User socket tracking ─────────────────────────
 
 
-//     public getIO(): SocketServer {
-//         return this.io
-//     }
+    private addUser(userId: string, socketId: string) {
 
-// };
+        if (!this.userSockets.has(userId)) {
+            this.userSockets.set(userId, new Set())
+        };
 
-// export default SocketService
+        this.userSockets.get(userId)!.add(socketId)
+    };
+
+    private removeUser(userId: string, socketId: string) {
+
+        this.userSockets.get(userId)?.delete(socketId);
+
+        if (this.userSockets.get(userId)?.size === 0) {
+            this.userSockets.delete(userId)
+        }
+    };
+
+    public isUserOnline(userId: string): boolean {
+        return (this.userSockets.get(userId)?.size ?? 0) > 0
+    };
+
+    // ── Emit helpers ─────────────────────────────────
+
+    // Send to a specific user (all their devices)
+    public emitToUser(userId: string, event: string, data: any) {
+        this.io.to(`user:${userId}`).emit(event, data)
+    };
+
+    // Send to all users in a chat room
+
+    public emitToChat(chatId: string, event: string, data: any) {
+        this.io.to(`chat:${chatId}`).emit(event, data)
+    };
+    // Send to everyone in chat EXCEPT the sender
+    public emitToChatExcept(chatId: string, senderId: string, event: string, data: any) {
+        this.io.to(`user:${senderId}`)
+            .except(`chat:${chatId}`)
+            .emit(event, data);
+
+        this.io.to(`chat:${chatId}`)
+            .except(senderId)
+            .emit(event, data)
+    };
+
+    private emitOnlineStatus(userId: string, isOnline: boolean) {
+        // Broadcast to everyone — contacts will filter on client side
+        this.io.emit(SOCKET_EVENTS.USER_ONLINE_STATUS, {
+            userId,
+            isOnline,
+            lasSeen: isOnline ? null : new Date()
+
+        });
+    }
+
+
+    public getIO(): SocketServer {
+        return this.io
+    }
+
+};
+
+export default SocketService

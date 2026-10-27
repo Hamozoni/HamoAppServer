@@ -3,6 +3,7 @@ import Message from "../models/message.model.js";
 import Chat from "../models/chat.model.js";
 import { Types } from "mongoose";
 import fileService from "../services/file.service.js";
+// import { sendMessagePush } from "../services/notifications.service.js";
 
 class MessageController {
 
@@ -39,7 +40,6 @@ class MessageController {
             // ── 3. Fetch messages ────────────────────
             const messages = await Message.find(query)
                 .sort({ createdAt: 1 })
-                .limit(Number(limit))
                 .populate("file", "secureUrl thumbnailUrl type metadata")
                 .populate("replyTo.file", "secureUrl thumbnailUrl type text")
                 .lean();
@@ -88,6 +88,7 @@ class MessageController {
 
         const { payload, cloudinaryData } = req.body;
         const senderId = (req as any).user._id;
+        const user = (req as any).user._id;
 
         try {
 

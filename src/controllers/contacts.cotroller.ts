@@ -37,7 +37,6 @@ class ContactsController {
             const contacts: IUser[] | null = await User.find({ phoneNumber: { $in: normalized } })
                 .select("_id displayName about phoneNumber countryISO countryCode").populate("profilePicture", "secureUrl")
 
-            console.log(contacts)
             if (!contacts)
                 return res.status(404).json({ error: 'Contacts not found' });
             return res.status(200).json(contacts);
