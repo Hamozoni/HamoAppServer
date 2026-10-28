@@ -1,6 +1,5 @@
 import { Server as HTTPServer } from "http";
 import { Server as SocketServer, Socket } from "socket.io";
-import jwt from "jsonwebtoken";
 
 import { SOCKET_EVENTS } from "./socket.events.js";
 import { deliverPendingMessages } from "./handlers/delivery.handler.js";
@@ -88,12 +87,15 @@ class SocketService {
             await deliverPendingMessages(userId);
 
             // ✅ Register message handler
-            socket.on(SOCKET_EVENTS.MESSAGE_SEND, (payload: any) => {
+            socket.on(SOCKET_EVENTS.MESSAGE_SEND, async (payload: any, callback: any) => {
                 console.log("📨 message:send received:", payload);
-                handleSendMessage(socket, payload);
+                const newMessageInfo = await handleSendMessage(socket, payload);
+
+                callback(newMessageInfo);
             });
 
             socket.on(SOCKET_EVENTS.JOIN_CHAT, (chatId: string) => {
+                console.log({ JOIN_CHAT: chatId })
                 socket.join(`chat:${chatId}`);
             });
 
@@ -154,6 +156,7 @@ class SocketService {
     // Send to all users in a chat room
 
     public emitToChat(chatId: string, event: string, data: any) {
+        console.log({ EMIT: `chat:${chatId}` })
         this.io.to(`chat:${chatId}`).emit(event, data)
     };
     // Send to everyone in chat EXCEPT the sender
