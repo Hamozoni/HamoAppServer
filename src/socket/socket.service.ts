@@ -84,22 +84,32 @@ class SocketService {
             this.emitOnlineStatus(userId, true);
 
             // ✅ Deliver pending messages on connect
-            await deliverPendingMessages(userId);
+            // await deliverPendingMessages(userId);
 
             // ✅ Register message handler
             socket.on(SOCKET_EVENTS.MESSAGE_SEND, async (payload: any, callback: any) => {
-                console.log("📨 message:send received:", payload);
                 const newMessageInfo = await handleSendMessage(socket, payload);
+                console.log("📨 message:send received:", payload);
+                await socket.to(`chat:${payload?.payload?.chatId}`)
+                    .except(socket.userId)
+                    .emit(SOCKET_EVENTS.MESSAGE_NEW, newMessageInfo)
 
                 callback(newMessageInfo);
             });
 
-            socket.on(SOCKET_EVENTS.JOIN_CHAT, (chatId: string) => {
+            socket.on(SOCKET_EVENTS.JOIN_CHAT, ({ chatId }: { chatId: string }) => {
                 console.log({ JOIN_CHAT: chatId })
                 socket.join(`chat:${chatId}`);
             });
 
-            socket.on(SOCKET_EVENTS.LEAVE_CHAT, (chatId: string) => {
+            socket.on(SOCKET_EVENTS.MESSAGE_READ, ({ chatId, messageId }: { chatId: string, messageId: string }) => {
+                console.log({ MESSAGE_READ: chatId, messageId });
+
+                this.emitToChatExcept(chatId, userId, SOCKET_EVENTS.MESSAGE_READ, { chatId, messageId })
+
+            });
+
+            socket.on(SOCKET_EVENTS.LEAVE_CHAT, ({ chatId }: { chatId: string }) => {
                 socket.leave(`chat:${chatId}`);
             });
 

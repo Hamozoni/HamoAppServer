@@ -86,7 +86,6 @@ export async function handleSendMessage(socket: any, { payload, cloudinaryData }
             { path: "replyTo.file", select: "secureUrl thumbnailUrl type text" },
         ]);
 
-        socketService.emitToChat(chat._id as string, "receive:message" as string, { message },)
         return { success: true, isNewChat, message }
 
     } catch (error: any) {
