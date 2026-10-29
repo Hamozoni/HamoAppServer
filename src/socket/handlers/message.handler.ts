@@ -39,13 +39,12 @@ export async function handleSendMessage(socket: any, { payload, cloudinaryData }
             chat = await Chat.findById(payload.chatId);
         }
 
-        if (!chat) {
-            // Check if chat already exists between these two users
-            chat = await Chat.findOne({
-                isGroup: false,
-                participants: { $all: [socket.userId, payload.receiverId], $size: 2 },
-            });
-        }
+        // Check if chat already exists between these two users
+        chat = await Chat.findOne({
+            isGroup: false,
+            participants: { $all: [socket.userId, payload.receiverId], $size: 2 },
+        });
+
 
         if (!chat) {
             // Create new chat
@@ -86,7 +85,55 @@ export async function handleSendMessage(socket: any, { payload, cloudinaryData }
             { path: "replyTo.file", select: "secureUrl thumbnailUrl type text" },
         ]);
 
-        return { success: true, isNewChat, message }
+        const receiverSocketIds = socket.get(payload?.receiverId);
+        const isOnline = receiverSocketIds && receiverSocketIds.size > 0;
+
+        if (!isOnline) {
+
+            return { success: true, isNewChat, message }
+        }
+
+        // 3. Check if the receiver is currently inside this specific chat room
+        const roomSockets = socket.adapter.rooms.get(`chat:${payload?.chatId}`);
+        let isUserInRoom = false;
+
+        if (roomSockets && receiverSocketIds) {
+            for (const socketId of receiverSocketIds) {
+                if (roomSockets.has(socketId)) {
+                    isUserInRoom = true;
+                    break;
+                }
+            }
+        }
+
+        if (isUserInRoom) {
+            message.status = "read";
+            chat.lastMessageStatus = "read";
+            await chat.save();
+            await message.save();
+
+            socket.to(`chat:${message?.chatId}`).except(socket.id).emit(SOCKET_EVENTS.MESSAGE_NEW, message);
+
+
+            return { success: true, isNewChat, message }
+        } else {
+            // 🟡 CASE 2: Receiver is online, but NOT in this chat room (e.g., on home screen)
+            // Send a targeted event to their user channel to trigger a notification / unread badge update
+
+            message.status = "delivered";
+            chat.lastMessageStatus = "delivered";
+            await chat.save();
+            await message.save();
+            socket.to(`user:${payload?.receiverId}`).emit(SOCKET_EVENTS.CHAT_NOTIFICATION, {
+                chatId: message?.id,
+                message: message,
+                alert: "New message received"
+            });
+
+            // Also emit back to the sender that it was sent
+            return { success: true, isNewChat, message }
+
+        }
 
     } catch (error: any) {
         console.error("❌ handleSendMessage error:", error.message);

@@ -88,16 +88,13 @@ class SocketService {
 
             // ✅ Register message handler
             socket.on(SOCKET_EVENTS.MESSAGE_SEND, async (payload: any, callback: any) => {
-                const newMessageInfo = await handleSendMessage(socket, payload);
-                console.log("📨 message:send received:", payload);
-                await socket.to(`chat:${payload?.payload?.chatId}`)
-                    .except(socket.userId)
-                    .emit(SOCKET_EVENTS.MESSAGE_NEW, newMessageInfo)
+                const newMessageInfo = await handleSendMessage(this.io, payload);
+                console.log("📨 message:send received:", payload)
 
                 callback(newMessageInfo);
             });
 
-            socket.on(SOCKET_EVENTS.JOIN_CHAT, ({ chatId }: { chatId: string }) => {
+            socket.on(SOCKET_EVENTS.JOIN_CHAT, (chatId: string) => {
                 console.log({ JOIN_CHAT: chatId })
                 socket.join(`chat:${chatId}`);
             });
@@ -109,7 +106,14 @@ class SocketService {
 
             });
 
-            socket.on(SOCKET_EVENTS.LEAVE_CHAT, ({ chatId }: { chatId: string }) => {
+            socket.on(SOCKET_EVENTS.MESSAGE_DELIVERED, ({ chatId, messageId }: { chatId: string, messageId: string }) => {
+                console.log({ MESSAGE_DELIVERED: chatId, messageId });
+
+                this.emitToChatExcept(chatId, userId, SOCKET_EVENTS.MESSAGE_DELIVERED, { chatId, messageId })
+
+            });
+
+            socket.on(SOCKET_EVENTS.LEAVE_CHAT, (chatId: string) => {
                 socket.leave(`chat:${chatId}`);
             });
 
@@ -188,7 +192,13 @@ class SocketService {
             lasSeen: isOnline ? null : new Date()
 
         });
-    }
+    };
+
+    private getUserSockets(userId: string) {
+
+        console.log(this.userSockets.get(userId))
+        return this.userSockets.get(userId) || new Set();
+    };
 
 
     public getIO(): SocketServer {

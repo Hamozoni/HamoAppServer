@@ -7,6 +7,7 @@ export const SOCKET_EVENTS = {
     // Chat room
     JOIN_CHAT: "chat:join",
     LEAVE_CHAT: "chat:leave",
+    CHAT_NOTIFICATION: "chat:notification",
 
     // Messages
     MESSAGE_SEND: "message:send",
