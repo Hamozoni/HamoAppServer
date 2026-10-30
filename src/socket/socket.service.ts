@@ -192,11 +192,38 @@ class SocketService {
         });
     };
 
-    private getUserSockets(userId: string) {
+    private getUserSocketIds(userId: string) {
 
         console.log(this.userSockets.get(userId))
         return this.userSockets.get(userId) || new Set();
     };
+
+    // Inside your SocketService class (Server-side)
+
+    public isUserInChatRoom(userId: string, chatId: string): boolean {
+        const roomName = `chat:${chatId}`;
+
+        // 1. Get all socket IDs currently inside this chat room
+        const roomSockets = this.io.sockets.adapter.rooms.get(roomName);
+        if (!roomSockets) {
+            return false; // Room doesn't exist or is empty
+        }
+
+        // 2. Get all active socket IDs belonging to this user (supports multi-device)
+        const userSocketIds = this.userSockets.get(userId);
+        if (!userSocketIds || userSocketIds.size === 0) {
+            return false; // User is completely offline
+        }
+
+        // 3. Check if any of the user's active sockets are present in the room
+        for (const socketId of userSocketIds) {
+            if (roomSockets.has(socketId)) {
+                return true; // Found! The user is inside this chat room.
+            }
+        }
+
+        return false; // User is online, but currently looking at a different screen or chat
+    }
 
 
     public getIO(): SocketServer {

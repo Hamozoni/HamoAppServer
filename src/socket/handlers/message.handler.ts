@@ -20,7 +20,7 @@ interface SendMessagePayload {
     clientMessageId: string;
 }
 
-export async function handleSendMessage(socket: any, { payload, cloudinaryData }: { payload: SendMessagePayload, cloudinaryData: any }) {
+export async function handleSendMessage(socket: any, { payload, cloudinaryData, clientMessageId }: { payload: any, cloudinaryData: any, clientMessageId: string }) {
 
     try {
         // ── 2. Validate content ──────────────────────
@@ -42,14 +42,14 @@ export async function handleSendMessage(socket: any, { payload, cloudinaryData }
         // Check if chat already exists between these two users
         chat = await Chat.findOne({
             isGroup: false,
-            participants: { $all: [socket.userId, payload.receiverId], $size: 2 },
+            participants: { $all: [payload.senderId, payload.receiverId], $size: 2 },
         });
 
 
         if (!chat) {
             // Create new chat
             chat = await Chat.create({
-                participants: [socket.userId, payload.receiverId],
+                participants: [payload.senderId, payload.receiverId],
                 isGroup: false,
             });
 
@@ -85,28 +85,21 @@ export async function handleSendMessage(socket: any, { payload, cloudinaryData }
             { path: "replyTo.file", select: "secureUrl thumbnailUrl type text" },
         ]);
 
-        const receiverSocketIds = socket.get(payload?.receiverId);
-        const isOnline = receiverSocketIds && receiverSocketIds.size > 0;
+        const isOnline = socketService.isUserOnline(payload?.receiverId);
 
         if (!isOnline) {
+            socket.emit(SOCKET_EVENTS.MESSAGE_SENT_ACKNOWLEDGEMENT, { success: true, isNewChat, message, clientMessageId });
 
-            socket.emit(SOCKET_EVENTS.MESSAGE_SENT_ACKNOWLEDGEMENT, { success: true, isNewChat, message })
+            return
 
-            return;
         }
 
+        // const receiverSocketIds = socket.get(payload?.receiverId);
         // 3. Check if the receiver is currently inside this specific chat room
-        const roomSockets = socket.adapter.rooms.get(`chat:${payload?.chatId}`);
-        let isUserInRoom = false;
 
-        if (roomSockets && receiverSocketIds) {
-            for (const socketId of receiverSocketIds) {
-                if (roomSockets.has(socketId)) {
-                    isUserInRoom = true;
-                    break;
-                }
-            }
-        }
+
+        let isUserInRoom = socketService.isUserInChatRoom(payload?.receiverId, new Types.ObjectId(message?.chatId)?.toString());
+
 
         if (isUserInRoom) {
             message.status = "read";
@@ -116,10 +109,8 @@ export async function handleSendMessage(socket: any, { payload, cloudinaryData }
 
             socket.to(`chat:${message?.chatId}`).except(socket.id).emit(SOCKET_EVENTS.MESSAGE_NEW, message);
 
-            socket.emit(SOCKET_EVENTS.MESSAGE_SENT_ACKNOWLEDGEMENT, { success: true, isNewChat, message })
+            socket.emit(SOCKET_EVENTS.MESSAGE_SENT_ACKNOWLEDGEMENT, { success: true, isNewChat, message, clientMessageId })
 
-
-            return;
         } else {
             // 🟡 CASE 2: Receiver is online, but NOT in this chat room (e.g., on home screen)
             // Send a targeted event to their user channel to trigger a notification / unread badge update
@@ -135,14 +126,13 @@ export async function handleSendMessage(socket: any, { payload, cloudinaryData }
             });
 
             // Also emit back to the sender that it was sent
-            socket.emit(SOCKET_EVENTS.MESSAGE_SENT_ACKNOWLEDGEMENT, { success: true, isNewChat, message });
+            socket.emit(SOCKET_EVENTS.MESSAGE_SENT_ACKNOWLEDGEMENT, { success: true, isNewChat, message, clientMessageId });
 
-            return;
 
         }
 
     } catch (error: any) {
-        console.error("❌ handleSendMessage error:", error.message);
+        console.error("❌ handleSendMessage error:", { error });
         socket.emit(SOCKET_EVENTS.ERROR, {
             event: SOCKET_EVENTS.MESSAGE_SEND,
             clientMessageId: payload.clientMessageId,
