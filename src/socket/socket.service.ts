@@ -87,11 +87,9 @@ class SocketService {
             // await deliverPendingMessages(userId);
 
             // ✅ Register message handler
-            socket.on(SOCKET_EVENTS.MESSAGE_SEND, async (payload: any, callback: any) => {
-                const newMessageInfo = await handleSendMessage(this.io, payload);
-                console.log("📨 message:send received:", payload)
-
-                callback(newMessageInfo);
+            socket.on(SOCKET_EVENTS.MESSAGE_SEND, async (payload: any) => {
+                handleSendMessage(this.io, payload);
+                console.log("📨 message:send received:", payload);
             });
 
             socket.on(SOCKET_EVENTS.JOIN_CHAT, (chatId: string) => {

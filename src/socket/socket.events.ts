@@ -17,6 +17,7 @@ export const SOCKET_EVENTS = {
     MESSAGE_READ_ALL: "message:read_all",
     MESSAGE_DELETED: "message:deleted",
     MESSAGE_EDITED: "message:edited",
+    MESSAGE_SENT_ACKNOWLEDGEMENT: "message:sent_acknowledgement",
 
     // Typing
     TYPING_START: "typing:start",

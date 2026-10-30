@@ -90,7 +90,9 @@ export async function handleSendMessage(socket: any, { payload, cloudinaryData }
 
         if (!isOnline) {
 
-            return { success: true, isNewChat, message }
+            socket.emit(SOCKET_EVENTS.MESSAGE_SENT_ACKNOWLEDGEMENT, { success: true, isNewChat, message })
+
+            return;
         }
 
         // 3. Check if the receiver is currently inside this specific chat room
@@ -114,8 +116,10 @@ export async function handleSendMessage(socket: any, { payload, cloudinaryData }
 
             socket.to(`chat:${message?.chatId}`).except(socket.id).emit(SOCKET_EVENTS.MESSAGE_NEW, message);
 
+            socket.emit(SOCKET_EVENTS.MESSAGE_SENT_ACKNOWLEDGEMENT, { success: true, isNewChat, message })
 
-            return { success: true, isNewChat, message }
+
+            return;
         } else {
             // 🟡 CASE 2: Receiver is online, but NOT in this chat room (e.g., on home screen)
             // Send a targeted event to their user channel to trigger a notification / unread badge update
@@ -131,7 +135,9 @@ export async function handleSendMessage(socket: any, { payload, cloudinaryData }
             });
 
             // Also emit back to the sender that it was sent
-            return { success: true, isNewChat, message }
+            socket.emit(SOCKET_EVENTS.MESSAGE_SENT_ACKNOWLEDGEMENT, { success: true, isNewChat, message });
+
+            return;
 
         }
 
