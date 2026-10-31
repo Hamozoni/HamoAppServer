@@ -1,7 +1,6 @@
 import { Types } from "mongoose";
 import Message from "../../models/message.model.js";
 import Chat from "../../models/chat.model.js";
-import User from "../../models/user.model.js";
 import { SOCKET_EVENTS } from "../socket.events.js";
 import { socketService } from "../../../index.js";
 import fileService from "../../services/file.service.js";
@@ -85,7 +84,12 @@ export async function handleSendMessage(socket: any, { payload, cloudinaryData, 
             { path: "replyTo.file", select: "secureUrl thumbnailUrl type text" },
         ]);
 
+        if (isNewChat) {
+
+        }
+
         const isOnline = socketService.isUserOnline(payload?.receiverId);
+
 
         if (!isOnline) {
             socket.emit(SOCKET_EVENTS.MESSAGE_SENT_ACKNOWLEDGEMENT, { success: true, isNewChat, message, clientMessageId });
@@ -134,6 +138,7 @@ export async function handleSendMessage(socket: any, { payload, cloudinaryData, 
     } catch (error: any) {
         console.error("❌ handleSendMessage error:", { error });
         socket.emit(SOCKET_EVENTS.ERROR, {
+            seccess: false,
             event: SOCKET_EVENTS.MESSAGE_SEND,
             clientMessageId: payload.clientMessageId,
             message: "Failed to send message",
