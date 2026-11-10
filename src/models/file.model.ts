@@ -109,19 +109,6 @@ const FileSchema = new Schema(
         expiresAt: {
             type: Date,
         },
-        // TTL — auto delete from MongoDB X days after download
-        deleteAfter: {
-            type: Date,
-            default: null,
-        },
-        downloaded: {
-            type: Boolean,
-            default: false,
-        },
-        downloadedAt: {
-            type: Date,
-            default: null,
-        },
         downloadedBy: [{
             userId: { type: Types.ObjectId, ref: "User" },
             downloadedAt: { type: Date, default: Date.now },

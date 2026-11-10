@@ -35,22 +35,11 @@ const UserSchema = new Schema<IUser>(
       ref: "File",
     },
 
-    lastSeen: {
-      type: Date,
-      default: Date.now,
-    },
-
-    isOnline: {
-      type: Boolean,
-      default: false,
-    },
 
     isBlocked: {
       type: Boolean,
       default: false,
     },
-
-    pushToken: { type: String },
   },
   { timestamps: true }
 );

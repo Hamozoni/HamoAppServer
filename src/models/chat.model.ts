@@ -2,12 +2,9 @@ import { Schema, model, Types, Document } from "mongoose";
 
 export interface IChat extends Document {
 
-    participants: Types.ObjectId[];
     isGroup: boolean;
     groupName?: string;
     groupAvatar?: Types.ObjectId;   // ref → File
-
-    groupAdmins: Types.ObjectId[];
 
     lastMessageId?: Types.ObjectId;
     lastMessageText?: string;
@@ -16,24 +13,12 @@ export interface IChat extends Document {
     lastMessageSenderId?: Types.ObjectId;
     lastMessageStatus: string;
 
-    // per-user settings — keyed by userId string
-    unreadCount: Map<string, number>;
-    isPinned: Map<string, boolean>;
-    isArchived: Map<string, boolean>;
-    isMuted: Map<string, boolean>;
-    mutedUntil: Map<string, Date>;
-
     createdAt: Date;
     updatedAt: Date;
 }
 
 const ChatSchema = new Schema<IChat>(
     {
-        participants: [{
-            type: String,
-            ref: "User",
-            required: true,
-        }],
 
         isGroup: {
             type: Boolean,
@@ -50,11 +35,6 @@ const ChatSchema = new Schema<IChat>(
             ref: "File",
             default: null,
         },
-
-        groupAdmins: [{
-            type: Types.ObjectId,
-            ref: "User",
-        }],
 
         // ── Last message preview ──────────────────
         lastMessageId: {
@@ -83,48 +63,13 @@ const ChatSchema = new Schema<IChat>(
             type: Types.ObjectId,
             ref: "User",
             default: null,
-        },
-
-        // ── Per-user settings ─────────────────────
-        unreadCount: {
-            type: Map,
-            of: Number,
-            default: {},
-        },
-        isPinned: {
-            type: Map,
-            of: Boolean,
-            default: {},
-        },
-        isArchived: {
-            type: Map,
-            of: Boolean,
-            default: {},
-        },
-        isMuted: {
-            type: Map,
-            of: Boolean,
-            default: {},
-        },
-        mutedUntil: {
-            type: Map,
-            of: Date,
-            default: {},
-        },
+        }
     },
     {
         timestamps: true,
     }
 );
 
-
-// ── Find direct chat between two users ───────────
-ChatSchema.statics.findDirectChat = async function (userA: string, userB: string) {
-    return this.findOne({
-        isGroup: false,
-        participants: { $all: [userA, userB], $size: 2 },
-    });
-};
 
 export default model<IChat>("Chat", ChatSchema);
 

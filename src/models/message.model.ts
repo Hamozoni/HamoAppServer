@@ -10,7 +10,6 @@ export type MessageStatus =
 export interface IMessage extends Document {
     chatId: Types.ObjectId;
     senderId: Types.ObjectId;
-    receiverId?: Types.ObjectId;    // null for group messages
 
     type: MessageType;
     status: MessageStatus;
@@ -79,11 +78,6 @@ const MessageSchema = new Schema<IMessage>(
             type: Schema.Types.ObjectId,
             ref: "User",
             required: true,
-        },
-        receiverId: {
-            type: Schema.Types.ObjectId,
-            ref: "User",
-            default: null,
         },
 
         type: {
@@ -199,6 +193,7 @@ const MessageSchema = new Schema<IMessage>(
 // ── Auto-update Chat on new message ──────────────
 MessageSchema.post("save", async function (doc) {
     const Chat = mongoose.model("Chat");
+    const Participant = mongoose.model("Participant");
 
     await Chat.findByIdAndUpdate(doc.chatId, {
         lastMessageId: doc._id,
@@ -207,10 +202,11 @@ MessageSchema.post("save", async function (doc) {
         lastMessageAt: doc.createdAt,
         lastMessageSenderId: doc.senderId,
         lastMessageStatus: "sent",
-        ...(doc.receiverId && {
-            $inc: { [`unreadCount.${doc.receiverId}`]: 1 },
-        }),
     });
+
+    await Participant.updateMany({ chtId: doc.chatId, userId: { $ne: doc.senderId } }, {
+        $inc: { unreadCount: 1 }
+    })
 });
 
 

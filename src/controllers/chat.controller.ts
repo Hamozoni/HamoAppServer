@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import User from "../models/user.model.js";
 import Chat from "../models/chat.model.js"
 import Message from "../models/message.model.js";
+import chatParticipantsModel from "../models/chatParticipants.model.js";
 
 class ChatController {
 
@@ -12,27 +13,25 @@ class ChatController {
         try {
             const userId = (req as any)?.userId?.toString();
 
+            const participants = await chatParticipantsModel.find({
+                user: userId,
+            }).populate("user", "displayName phoneNumber about profilePicture")
+                .populate({
+                    path: "user.profilePicture",
+                    select: "secureUrl"
+                });
+
+            if (!participants) {
+                return res.status(200).json({ chats: [] });
+            }
+
+            const chatsIds = participants.map(p => p?.chatId);
+
             const chats = await Chat.find({
-                participants: { $in: [userId] },
+                _id: { $in: chatsIds },
             })
                 .sort({ lastMessageAt: -1 })
                 .populate("groupAvatar", "secureUrl")
-                .populate({
-                    path: "groupAdmins",
-                    select: "displayName phoneNumber _id about",
-                    populate: {
-                        path: "profilePicture",
-                        select: "secureUrl" // specify the fields you want from the profilePicture document
-                    }
-                })
-                .populate({
-                    path: "participants",
-                    select: "displayName phoneNumber _id profilePicture about",
-                    populate: {
-                        path: "profilePicture",
-                        select: "secureUrl" // fields you want from the profilePicture document (e.g., secureUrl, url, etc.)
-                    }
-                });
 
 
             await Message.updateMany({
@@ -55,9 +54,7 @@ class ChatController {
                 lastMessageStatus: "delivered",
             })
 
-            console.log(chats[0]?.unreadCount);
-
-            return res.status(200).json({ chats });
+            return res.status(200).json({ chats, participants });
 
         } catch (err: any) {
             console.error("getChats error:", err.message);

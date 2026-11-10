@@ -4,6 +4,7 @@ import Chat from "../../models/chat.model.js";
 import { SOCKET_EVENTS } from "../socket.events.js";
 import { socketService } from "../../../index.js";
 import fileService from "../../services/file.service.js";
+import Participant from "../../models/chatParticipants.model.js";
 
 interface SendMessagePayload {
     chatId?: string;
@@ -38,23 +39,30 @@ export async function handleSendMessage(socket: any, { payload, cloudinaryData, 
             chat = await Chat.findById(payload.chatId);
         }
 
-        // Check if chat already exists between these two users
-        chat = await Chat.findOne({
-            isGroup: false,
-            participants: { $all: [payload.senderId, payload.receiverId], $size: 2 },
-        });
-
-
         if (!chat) {
             // Create new chat
             chat = await Chat.create({
-                participants: [payload.senderId, payload.receiverId],
                 isGroup: false,
             });
+
+            await Participant.insertMany([{
+                chatId: chat._id,
+                user: payload.receiverId,
+                role: "member",
+            },
+            {
+                chatId: chat._id,
+                user: payload.senderId,
+                role: "admin",
+            }
+
+            ]);
 
             isNewChat = true;
 
         };
+
+        delete payload.receiverId;
 
         // ── 4. Save message ──────────────────────────
         let message = await Message.create({
@@ -84,9 +92,6 @@ export async function handleSendMessage(socket: any, { payload, cloudinaryData, 
             { path: "replyTo.file", select: "secureUrl thumbnailUrl type text" },
         ]);
 
-        if (isNewChat) {
-
-        }
 
         const isOnline = socketService.isUserOnline(payload?.receiverId);
 
