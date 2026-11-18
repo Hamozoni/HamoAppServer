@@ -67,7 +67,6 @@ class MessageController {
                 chat.lastMessageStatus = "read";
             }
 
-            chat.unreadCount.set(userId.toString(), 0);
             chat.lastMessageAt = new Date();
             await chat.save();
 

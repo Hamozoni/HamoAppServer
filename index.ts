@@ -13,7 +13,7 @@ import SocketService from "./src/socket/socket.service.js";
 
 dotenv.config();
 
-const PORT = process.env.PORT || 5500;
+const PORT = 5500;
 connect_db();
 
 const server = http.createServer(app);

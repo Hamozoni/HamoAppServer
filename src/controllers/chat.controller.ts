@@ -13,29 +13,22 @@ class ChatController {
         try {
             const userId = (req as any)?.userId?.toString();
 
-            const participants = await chatParticipantsModel.find({
-                user: userId,
-            }).populate("user", "displayName phoneNumber about profilePicture")
-                .populate({
-                    path: "user.profilePicture",
-                    select: "secureUrl"
-                });
+            const myChats = await chatParticipantsModel.find({ user: userId }).populate('chatId')
 
-            if (!participants) {
+            if (!myChats) {
                 return res.status(200).json({ chats: [] });
             }
 
-            const chatsIds = participants.map(p => p?.chatId);
+            const chatsIds = myChats.map(p => p?.chatId?._id);
 
-            const chats = await Chat.find({
-                _id: { $in: chatsIds },
-            })
-                .sort({ lastMessageAt: -1 })
-                .populate("groupAvatar", "secureUrl")
+            const participants = await chatParticipantsModel.find({ chatId: { $in: chatsIds }, user: { $ne: [userId] } })
+                .select('user _id chatId role joinedAt')
+                .populate("user", '_id displayName about phoneNumber countryISO countryCode profilePicture')
+
 
 
             await Message.updateMany({
-                chatId: { $in: [...chats.map(chat => chat._id)] },
+                chatId: { $in: [...myChats.map(chat => chat?.chatId?._id)] },
                 senderId: { $ne: userId },
                 status: "sent",
 
@@ -52,7 +45,21 @@ class ChatController {
                 lastMessageSenderId: { $ne: userId }
             }, {
                 lastMessageStatus: "delivered",
-            })
+            });
+
+            const chats = myChats.map(chat => ({
+                ...chat?.chatId?._doc,
+                role: chat.role,
+                joinedAt: chat.joinedAt,
+                unreadCount: chat.unreadCount,
+                isPinned: chat.isPinned,
+                isArchived: chat.isArchived,
+                isMuted: chat.isMuted,
+                mutedUntil: chat.mutedUntil,
+            }));
+
+            console.log({ chat: chats[0] })
+
 
             return res.status(200).json({ chats, participants });
 
