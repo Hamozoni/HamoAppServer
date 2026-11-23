@@ -62,7 +62,7 @@ export async function handleSendMessage(socket: any, { payload, cloudinaryData, 
 
         };
 
-        delete payload.receiverId;
+        // delete payload.receiverId;
 
         // ── 4. Save message ──────────────────────────
         let message = await Message.create({

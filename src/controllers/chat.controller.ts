@@ -58,7 +58,6 @@ class ChatController {
                 mutedUntil: chat.mutedUntil,
             }));
 
-            console.log({ chat: chats })
 
 
             return res.status(200).json({ chats, participants });
