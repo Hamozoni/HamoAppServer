@@ -11,7 +11,7 @@ class ChatController {
     async getChats(req: Request, res: Response): Promise<Response> {
 
         try {
-            const userId = (req as any)?.userId?.toString();
+            const userId = (req as any)?.userId;
 
             const myChats = await chatParticipantsModel.find({ user: userId }).populate('chatId')
 
@@ -58,7 +58,7 @@ class ChatController {
                 mutedUntil: chat.mutedUntil,
             }));
 
-            console.log({ chat: chats[0] })
+            console.log({ chat: chats })
 
 
             return res.status(200).json({ chats, participants });

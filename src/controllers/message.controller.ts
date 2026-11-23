@@ -16,8 +16,7 @@ class MessageController {
 
             // ── 1. Verify user is participant ────────
             const chat = await Chat.findOne({
-                _id: chatId,
-                participants: { $in: [userId.toString()] },
+                _id: chatId
             })
 
             if (!chat) {
