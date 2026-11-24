@@ -26,7 +26,7 @@ class FileService {
             publicId: cloudinaryData.public_id,
             resourceType,
             secureUrl: cloudinaryData.secure_url,
-            thumbnailUrl: cloudinaryData.resource_type === "video"
+            thumbnailUrl: cloudinaryData.resource_type === "video" || cloudinaryData.resource_type === "document"
                 ? cloudinaryData.secure_url.replace(/\.[^/.]+$/, ".jpg")
                 : null,
             metadata: {
